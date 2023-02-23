@@ -1,5 +1,6 @@
 import {defs, tiny} from './examples/common.js';
 import {Shape_From_File} from "./examples/obj-file-demo.js";
+import {Text_Line} from "./examples/text-demo.js";
 
 const {
     Vector, Vector3, Vector4, vec, vec3, vec4, color, hex_color, Shader, Matrix, Mat4, Light, Shape, Material, Scene, Texture,
@@ -19,12 +20,19 @@ export class Target_Terminator extends Scene {
         // constructor(): Scenes begin by populating initial values like the Shapes and Materials they'll need.
         super();
 
+        const bump = new defs.Fake_Bump_Map();
+
+        this.game_state = 0; // 0 = start, 1 = playing, 2 = end
+        this.round_time = 0; // Timer for each round
+        
         this.shapes = {
+            cube: new defs.Cube(),
+            sphere: new defs.Subdivision_Sphere(4),
+            donut: new defs.Torus(15, 15),
             teapot: new Shape_From_File("./assets/teapot.obj"),
+            text: new Text_Line(35)
         }
 
-        const bump = new defs.Fake_Bump_Map();
-        
         this.materials = {
             phong: new Material(new Textured_Phong(), {
                 color: hex_color("#ffffff"),
@@ -38,14 +46,79 @@ export class Target_Terminator extends Scene {
             mybasic: new Material(new My_Basic_Shader()),
         }
 
+        const texture = new defs.Textured_Phong(1);
+        const phong = new defs.Phong_Shader();
+        this.text_image = new Material(texture, {
+            ambient: 1, diffusivity: 0, specularity: 0,
+            texture: new Texture("assets/text.png")
+        });
+        this.grey = new Material(phong, {
+            color: hex_color('#00ffff'), ambient: 0.5,
+            diffusivity: .3, specularity: .2, smoothness: 30
+        })
+        this.yellow = new Material(phong, {
+            color: hex_color('#ffff00'), ambient: 0.5,
+            diffusivity: .3, specularity: .2, smoothness: 30
+        })
+
         this.initial_camera_location = Mat4.look_at(vec3(0, 10, 20), vec3(0, 0, 0), vec3(0, 1, 0));
         this.mouse_position;
+        this.options = {
+            shapes: {
+                cube: false,
+                sphere: false,
+                donut: false,
+                teapot: false
+            },
+            obstacles: false,
+            difficulty: 1
+        };
         this.animation_queue = [];
+        this.spawned_entities = {};
     }
 
     make_control_panel() {
         // TODO: Control Panel to change shapes, speed, etc.
-        
+        this.key_triggered_button("Toggle cube", [], () => {
+            this.options.shapes.cube = !this.options.shapes.cube;
+        });
+        this.new_line();
+        this.key_triggered_button("Toggle sphere", [], () => {
+            this.options.shapes.sphere = !this.options.shapes.sphere;
+        });
+        this.new_line();
+        this.key_triggered_button("Toggle donut", [], () => {
+            this.options.shapes.donut = !this.options.shapes.donut;
+        });
+        this.new_line();
+        this.key_triggered_button("Toggle teapot", [], () => {
+            this.options.shapes.teapot = !this.options.shapes.teapot;
+        });
+        this.new_line();
+        this.key_triggered_button("Toggle obstacles", [], () => {
+            this.options.obstacles = !this.options.obstacles;
+        });
+        this.new_line();
+        this.key_triggered_button("Cycle Difficulty", [], () => {
+            this.options.difficulty += 1;
+            if (this.options.difficulty > 3) {
+                this.options.difficulty = 1;
+            }
+        });
+        this.live_string(box => {
+            box.textContent = "Difficulty: " + this.options.difficulty;
+        });
+
+        // Temporary cycle game state
+        this.key_triggered_button("Cycle game state", [], () => {
+            this.game_state += 1;
+            if (this.game_state > 2) {
+                this.game_state = 0;
+            }
+        });
+        this.live_string(box => {
+            box.textContent = "Game State: " + this.game_state;
+        });
     }
 
     my_mouse_down(e, pos, context, program_state) {
@@ -71,6 +144,117 @@ export class Target_Terminator extends Scene {
         this.animation_queue.push(animation_bullet)
     }
 
+    display_menu(context, program_state, t) {
+        const shapes = this.options.shapes;
+
+        // Background
+        let background_transform = Mat4.identity();
+        background_transform = background_transform.times(Mat4.translation(0, 0, -10)).times(Mat4.scale(20, 20, 0.2));
+        this.shapes.cube.draw(context, program_state, background_transform, this.materials.texture);
+
+        // Standard for all option texts
+        let option_text_transform = Mat4.identity();
+        option_text_transform = option_text_transform.times(Mat4.translation(0.1, -0.9, 0))
+                                                    .times(Mat4.scale(.12, .5, 0));
+
+        // Play Button
+        let play_button_transform = Mat4.identity();
+        play_button_transform = play_button_transform.times(Mat4.translation(-3, 0, 0))
+                                                    .times(Mat4.scale(2, 0.7, 0.2))
+                                                    .times(Mat4.rotation(0.15, 0, 1, 0));
+        this.shapes.cube.draw(context, program_state, play_button_transform, this.grey);
+        const cube_side = Mat4.rotation(0, 1, 0, 0)
+                        .times(Mat4.rotation(0, 0, 1, 0))
+                        .times(Mat4.translation(-.9, .9, 1.01));
+        let string = "PLAY"
+        // Draw a Text_String for every line in our string, up to 30 lines:
+        this.shapes.text.set_string(string, context.context);
+        this.shapes.text.draw(context, program_state, play_button_transform.times(cube_side)
+                                                                            .times(Mat4.translation(0.4, -0.9, 0))
+                                                                            .times(Mat4.scale(.2, .4, 0)), this.text_image);
+
+        // Toggle Cube button
+        let cube_button_transform = Mat4.identity();
+        cube_button_transform = cube_button_transform.times(Mat4.translation(4, 3, 0))
+                                                    .times(Mat4.scale(1.7, 0.5, 0.2))
+                                                    .times(Mat4.rotation(-0.15, -1, 1, 0));
+        this.shapes.cube.draw(context, program_state, cube_button_transform, this.grey);
+        string = "Cubes:" + (shapes.cube ? "On" : "Off")
+        this.shapes.text.set_string(string, context.context);
+        this.shapes.text.draw(context, program_state, cube_button_transform.times(cube_side).times(option_text_transform), this.text_image);
+
+        // Toggle Sphere button
+        let sphere_button_transform = cube_button_transform;
+        sphere_button_transform = sphere_button_transform.times(Mat4.translation(0, -3, 0));                      
+        this.shapes.cube.draw(context, program_state, sphere_button_transform, this.grey);
+        string = "Spheres:" + (shapes.sphere ? "On" : "Off")
+        this.shapes.text.set_string(string, context.context);
+        this.shapes.text.draw(context, program_state, sphere_button_transform.times(cube_side).times(option_text_transform), this.text_image);
+
+        // Toggle Donut button
+        let donut_button_transform = sphere_button_transform;
+        donut_button_transform = donut_button_transform.times(Mat4.translation(0, -3, 0));                  
+        this.shapes.cube.draw(context, program_state, donut_button_transform, this.grey);
+        string = "Donuts:" + (shapes.donut ? "On" : "Off")
+        this.shapes.text.set_string(string, context.context);
+        this.shapes.text.draw(context, program_state, donut_button_transform.times(cube_side).times(option_text_transform), this.text_image);
+
+        // Toggle Teapot button
+        let teapot_button_transform = donut_button_transform;
+        teapot_button_transform = teapot_button_transform.times(Mat4.translation(0, -3, 0))                     
+        this.shapes.cube.draw(context, program_state, teapot_button_transform, this.grey);
+        string = "Teapots:" + (shapes.teapot ? "On" : "Off")
+        this.shapes.text.set_string(string, context.context);
+        this.shapes.text.draw(context, program_state, teapot_button_transform.times(cube_side).times(option_text_transform), this.text_image);
+
+        // Cycle Difficulty button
+        let difficulty_button_transform = teapot_button_transform;
+        difficulty_button_transform = difficulty_button_transform.times(Mat4.translation(0, -3, 0))                     
+        this.shapes.cube.draw(context, program_state, difficulty_button_transform, this.grey);
+        let difficulty = 'Easy';
+        switch (this.options.difficulty) {
+            case 1:
+                difficulty = 'Easy';
+                break;
+            case 2:
+                difficulty = 'Medium';
+                break;
+            case 3:
+                difficulty = 'Hard';
+                break;
+        }
+        string = difficulty;
+        this.shapes.text.set_string(string, context.context);
+        this.shapes.text.draw(context, program_state, difficulty_button_transform.times(cube_side).times(option_text_transform), this.text_image);
+
+    }
+
+    // @Zinc: u can handle spawning shapes here
+    // Method to display shapes in a random position on the screen based on a set of options
+    display_shapes(context, program_state, options, t) {
+        const {shapes, obstacles, difficulty} = options;
+
+        const gameSpeed = difficulty * 0.001 * t;
+
+        let model_transform = Mat4.identity();
+
+        // Spawn shapes in random positions with random scales
+        for (let i = 0; i < 1; i++) {
+            model_transform = Mat4.identity();
+            
+            let shape = Object.keys(shapes)[Math.floor(Math.random() * Object.keys(shapes).length)];
+            let scale = Math.random();
+            let x = Math.random() * 10 - 5;
+            let y = Math.random() * 10 - 5;
+            let z = Math.random() * 10 - 5;
+
+            if (shapes[shape]) {
+                model_transform = model_transform.times(Mat4.translation(x, y, z).times(Mat4.scale(scale, scale, scale)));
+                this.shapes[shape].draw(context, program_state, model_transform, this.materials.phong);
+            }
+        }
+    }
+
     display(context, program_state) {
         if (!context.scratchpad.controls) {
             this.children.push(context.scratchpad.controls = new defs.Movement_Controls());
@@ -89,7 +273,7 @@ export class Target_Terminator extends Scene {
                 this.my_mouse_down(e, mouse_position(e), context, program_state);
             });
 
-            // Track position of mouse within the viewport - Pierce
+            // Track position of mouse within the viewport
             canvas.addEventListener("mousemove", e => {
                 e.preventDefault();
                 this.mouse_position = mouse_position(e);
@@ -126,6 +310,22 @@ export class Target_Terminator extends Scene {
                 }
             }
         }
+        
+        // game state case
+        switch (this.game_state) {
+            case 0: 
+                this.display_menu(context, program_state, t) // menu
+                program_state.set_camera(Mat4.look_at(vec3(0, 0, 10), vec3(0, 0, 0), vec3(0, 1, 0))); // fix camera
+                break;
+            case 1:
+                this.display_shapes(context, program_state, this.options, t);
+                break;
+            case 2:
+                break;
+            default:
+                break;
+        }
+
         // remove finished animation
         while (this.animation_queue.length > 0) {
             if (t > this.animation_queue[0].end_time) {
