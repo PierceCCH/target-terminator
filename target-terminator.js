@@ -54,6 +54,14 @@ export class Target_Terminator extends Scene {
             }),
             basic: new Material(new Basic_Shader()),
             mybasic: new Material(new My_Basic_Shader()),
+            sky: new Material(new defs.Phong_Shader(), {
+                color: hex_color("#87CEEB"), 
+                ambient: 1, diffusivity: 0, specularity: 0,
+            }),
+            ground: new Material(new defs.Phong_Shader(), {
+                color: hex_color("#C2B280"),
+                ambient: 1, diffusivity: 0, specularity: 0,
+            }),
         }
 
         this.initial_camera_location = Mat4.look_at(vec3(0, 10, 20), vec3(0, 0, 0), vec3(0, 1, 0));
@@ -137,6 +145,21 @@ export class Target_Terminator extends Scene {
             end_time: program_state.animation_time + 1000,
         }
         this.animation_queue.push(animation_bullet)
+    }
+
+    display_background(context, program_state) {
+        let draw_sky = () => {
+            let model_transform = Mat4.identity();
+            model_transform = model_transform.times(Mat4.scale(40, 40, 40));
+            this.shapes.cube.draw(context, program_state, model_transform, this.materials.sky);
+        }
+        let draw_ground = () => {
+            let model_transform = Mat4.identity();
+            model_transform = model_transform.times(Mat4.translation(0, -2, 0)).times(Mat4.scale(40, 0.2, 40));
+            this.shapes.cube.draw(context, program_state, model_transform, this.materials.ground);
+        }
+        draw_sky()
+        draw_ground()
     }
 
     display_menu(context, program_state, t) {
@@ -276,7 +299,7 @@ export class Target_Terminator extends Scene {
                 this.mouse_position = mouse_position(e);
                 let mouseX = this.mouse_position[0];
                 let mouseY = this.mouse_position[1];
-                console.log(mouseX, mouseY);
+                // console.log(mouseX, mouseY);
             });
 
         }
@@ -316,6 +339,7 @@ export class Target_Terminator extends Scene {
                 break;
             case 1:
                 this.display_shapes(context, program_state, this.options, t);
+                this.display_background(context, program_state);
                 break;
             case 2:
                 // game over
