@@ -11,6 +11,30 @@ const {
     Basic_Shader
 } = defs;
 
+/* Trying to get flat shading to work */
+// let des = new Shape_From_File("./assets/desert_plane.obj");
+// console.log(des)
+// let des_pos = [...des.arrays.position];
+// console.log(des_pos)
+
+// class desert_manual extends Shape {
+//     constructor() {
+//         super("position", "normal",);
+//         // Loop 3 times (for each axis), and inside loop twice (for opposing cube sides):
+//         this.arrays.position = Vector3.cast(
+//             [-1, -1, -1], [1, -1, -1], [-1, -1, 1], [1, -1, 1], [1, 1, -1], [-1, 1, -1], [1, 1, 1], [-1, 1, 1],
+//             [-1, -1, -1], [-1, -1, 1], [-1, 1, -1], [-1, 1, 1], [1, -1, 1], [1, -1, -1], [1, 1, 1], [1, 1, -1],
+//             [-1, -1, 1], [1, -1, 1], [-1, 1, 1], [1, 1, 1], [1, -1, -1], [-1, -1, -1], [1, 1, -1], [-1, 1, -1]);
+//         this.arrays.normal = Vector3.cast(
+//             [0, -1, 0], [0, -1, 0], [0, -1, 0], [0, -1, 0], [0, 1, 0], [0, 1, 0], [0, 1, 0], [0, 1, 0],
+//             [-1, 0, 0], [-1, 0, 0], [-1, 0, 0], [-1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0],
+//             [0, 0, 1], [0, 0, 1], [0, 0, 1], [0, 0, 1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1]);
+//         // Arrange the vertices into a square shape in texture space too:
+//         this.indices.push(0, 1, 2, 1, 3, 2, 4, 5, 6, 5, 7, 6, 8, 9, 10, 9, 11, 10, 12, 13,
+//             14, 13, 15, 14, 16, 17, 18, 17, 19, 18, 20, 21, 22, 21, 23, 22);
+//     }
+// }
+
 export class Target_Terminator extends Scene {
     /**
      *  **Base_scene** is a Scene that can be added to any display canvas.
@@ -22,14 +46,15 @@ export class Target_Terminator extends Scene {
 
         this.game_state = 0; // 0 = start, 1 = playing, 2 = end
         this.round_time = 0; // Timer for each round
-        
+
         // each shape should also store some data about its lifetime
         this.shapes = {
             cube: new defs.Cube(),
             sphere: new defs.Subdivision_Sphere(4),
             donut: new defs.Torus(15, 15),
             teapot: new Shape_From_File("./assets/teapot.obj"),
-            text: new Text_Line(35)
+            text: new Text_Line(35),
+            desert_plane: new Shape_From_File("./assets/desert_plane.obj"),
         }
 
         const texture = new defs.Textured_Phong(1);
@@ -60,11 +85,15 @@ export class Target_Terminator extends Scene {
             }),
             ground: new Material(new defs.Phong_Shader(), {
                 color: hex_color("#C2B280"),
-                ambient: 1, diffusivity: 0, specularity: 0,
+                ambient: 1, diffusivity: 1, specularity: 0,
             }),
             sun: new Material(new defs.Phong_Shader(), {
                 color: hex_color("#FFE87C"),
                 ambient: 1, specularity: 0,
+            }),
+            rock: new Material(new defs.Phong_Shader(), {
+                color: hex_color("#808080"),
+                ambient: 1, diffusivity: 1, specularity: 0,
             }),
         }
 
@@ -159,8 +188,8 @@ export class Target_Terminator extends Scene {
         }
         let draw_ground = () => {
             let model_transform = Mat4.identity();
-            model_transform = model_transform.times(Mat4.translation(0, -5, 0)).times(Mat4.scale(40, 0.2, 40));
-            this.shapes.cube.draw(context, program_state, model_transform, this.materials.ground);
+            model_transform = model_transform.times(Mat4.translation(0, -5, 0)).times(Mat4.scale(40, 40, 40));
+            this.shapes.desert_plane.draw(context, program_state, model_transform, this.materials.ground);
         }
         let draw_sun = () => {
             let model_transform = Mat4.identity();
@@ -172,6 +201,7 @@ export class Target_Terminator extends Scene {
         draw_sky()
         draw_ground()
         draw_sun()
+        // console.log(this.shapes.desert_plane.arrays.position)
     }
 
     display_menu(context, program_state, t) {
