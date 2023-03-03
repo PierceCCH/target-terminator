@@ -62,6 +62,10 @@ export class Target_Terminator extends Scene {
                 color: hex_color("#C2B280"),
                 ambient: 1, diffusivity: 0, specularity: 0,
             }),
+            sun: new Material(new defs.Phong_Shader(), {
+                color: hex_color("#FFE87C"),
+                ambient: 1, specularity: 0,
+            }),
         }
 
         this.initial_camera_location = Mat4.look_at(vec3(0, 10, 20), vec3(0, 0, 0), vec3(0, 1, 0));
@@ -155,11 +159,19 @@ export class Target_Terminator extends Scene {
         }
         let draw_ground = () => {
             let model_transform = Mat4.identity();
-            model_transform = model_transform.times(Mat4.translation(0, -2, 0)).times(Mat4.scale(40, 0.2, 40));
+            model_transform = model_transform.times(Mat4.translation(0, -5, 0)).times(Mat4.scale(40, 0.2, 40));
             this.shapes.cube.draw(context, program_state, model_transform, this.materials.ground);
+        }
+        let draw_sun = () => {
+            let model_transform = Mat4.identity();
+            model_transform = model_transform.times(Mat4.translation(-20, 15, -30)).times(Mat4.scale(3, 3, 3));
+            // The parameters of the Light are: position, color, size
+            this.shapes.sphere.draw(context, program_state, model_transform, this.materials.sun);
+            program_state.lights = [new Light(model_transform, hex_color("#FFF2B3"), 1000)];
         }
         draw_sky()
         draw_ground()
+        draw_sun()
     }
 
     display_menu(context, program_state, t) {
