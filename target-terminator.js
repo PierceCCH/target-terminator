@@ -1,6 +1,7 @@
 import {defs, tiny} from './examples/common.js';
 import {Shape_From_File} from "./examples/obj-file-demo.js";
 import {Text_Line} from "./examples/text-demo.js";
+import Target from './spawn-random-targets.js';
 
 const {
     Vector, Vector3, Vector4, vec, vec3, vec4, color, hex_color, Shader, Matrix, Mat4, Light, Shape, Material, Scene, Texture,
@@ -23,6 +24,7 @@ export class Target_Terminator extends Scene {
         this.game_state = 0; // 0 = start, 1 = playing, 2 = end
         this.round_time = 0; // Timer for each round
         
+        this.targets_array = []; // Array of targets
         // each shape should also store some data about its lifetime
         this.shapes = {
             cube: new defs.Cube(),
@@ -34,8 +36,10 @@ export class Target_Terminator extends Scene {
 
         const texture = new defs.Textured_Phong(1);
         const phong = new defs.Phong_Shader();
+        const scarlet_color= hex_color("#D21404");
 
         this.materials = {
+            base_target: new Material(phong, {color: scarlet_color,}),
             phong: new Material(new Textured_Phong(), {
                 color: hex_color("#ffffff"),
             }),
@@ -226,29 +230,68 @@ export class Target_Terminator extends Scene {
 
     // @Zinc: u can handle spawning shapes here
     // Method to display shapes in a random position on the screen based on a set of options
-    display_shapes(context, program_state, options, t) {
+    display_shapes(context, program_state, options) {
         const {shapes, obstacles, difficulty} = options; // Destructure options object, difficulty determine how fast objects despawn
-
+        const t = program_state.animation_time / 1000;
         let model_transform = Mat4.identity();
+        let exposure_time = 0; //How long a target is exposed for bfr disappearing
+        let spawn_time = 0; //How freq a shape is spawned
+        switch (difficulty) {
+            case 1:
+                exposure_time = 5;
+                spawn_time = 3;
+                break;
+            case 2:
+                exposure_time = 3;
+                spawn_time = 2;
+                break;
+            case 3:
+                exposure_time = 1;
+                spawn_time = 1;
+                break;
+        }
 
         // Spawn shapes in random positions with random scales
-        for (let i = 0; i < 1; i++) {
             model_transform = Mat4.identity();
             
             let shape = Object.keys(shapes)[Math.floor(Math.random() * Object.keys(shapes).length)];
-            let scale = Math.random();
+            //let scale = Math.random();
             let x = Math.random() * 10 - 5;
             let y = Math.random() * 10 - 5;
             let z = Math.random() * 10 - 5;
 
-            if (shapes[shape]) {
-                model_transform = model_transform.times(Mat4.translation(x, y, z).times(Mat4.scale(scale, scale, scale)));
-                this.shapes[shape].draw(context, program_state, model_transform, this.materials.phong);
+            if (Math.floor(t) % spawn_time == 0) { //periodically push into array
+                
+                if (this.targets_array.length == 0) {
+                    let new_target = new Target(x,y,z,t,exposure_time);
+                    this.targets_array.push(new_target); 
+                    console.log("put in array");
+                }
+                else if (this.targets_array.length > 0 && Math.floor(this.targets_array[this.targets_array.length - 1].time_created) != Math.floor(t)) {
+                    let new_target = new Target(x,y,z,t,exposure_time);
+                    this.targets_array.push(new_target); 
+                    console.log("put in array");
+                }
+                
             }
-        }
+            if (shapes[shape]) {
+                for (let i = 0; i < this.targets_array.length; i++) {
+                    let target_pos_transform = model_transform.times(Mat4.translation(this.targets_array[i].x, this.targets_array[i].y, this.targets_array[i].z));
+                    this.shapes[shape].draw(context, program_state, target_pos_transform, this.materials.base_target);
+                }
+                // let target_pos_transform = model_transform.times(Mat4.translation(x, y, z));
+                // this.shapes[shape].draw(context, program_state, target_pos_transform, this.materials.base_target);
+            }
+            for (let i = 0; i < this.targets_array.length; i++) { //periodically pop from array
+                if (Math.floor(t) - this.targets_array[0].time_created > exposure_time) {
+                    this.targets_array.shift();
+                    console.log("popped from array");
+                }
+            }
 
         if (obstacles){
             // Spawn obstacles that block the user, low priority
+            console.log("Obstacles not implemented yet");
         }
     }
 
