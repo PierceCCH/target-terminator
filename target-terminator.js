@@ -55,6 +55,9 @@ export class Target_Terminator extends Scene {
             teapot: new Shape_From_File("./assets/teapot.obj"),
             text: new Text_Line(35),
             desert_plane: new Shape_From_File("./assets/desert_plane.obj"),
+            rock: new (defs.Subdivision_Sphere.prototype.make_flat_shaded_version())(2),
+            cactus: new Shape_From_File("./assets/cactus.obj"),
+            blocky_cactus: new Shape_From_File("./assets/blocky_cactus.obj"),
         }
 
         const texture = new defs.Textured_Phong(1);
@@ -85,7 +88,7 @@ export class Target_Terminator extends Scene {
             }),
             ground: new Material(new defs.Phong_Shader(), {
                 color: hex_color("#C2B280"),
-                ambient: 1, diffusivity: 1, specularity: 0,
+                ambient: 0.6, diffusivity: 1, specularity: 1,
             }),
             sun: new Material(new defs.Phong_Shader(), {
                 color: hex_color("#FFE87C"),
@@ -93,7 +96,11 @@ export class Target_Terminator extends Scene {
             }),
             rock: new Material(new defs.Phong_Shader(), {
                 color: hex_color("#808080"),
-                ambient: 1, diffusivity: 1, specularity: 0,
+                ambient: 0.6, diffusivity: 1, specularity: 0,
+            }),
+            cactus: new Material(new defs.Phong_Shader(), {
+                color: hex_color("#5C755E"),
+                ambient: 1, diffusivity: 0, specularity: 0,
             }),
         }
 
@@ -196,12 +203,32 @@ export class Target_Terminator extends Scene {
             model_transform = model_transform.times(Mat4.translation(-20, 15, -30)).times(Mat4.scale(3, 3, 3));
             // The parameters of the Light are: position, color, size
             this.shapes.sphere.draw(context, program_state, model_transform, this.materials.sun);
-            program_state.lights = [new Light(model_transform, hex_color("#FFF2B3"), 1000)];
         }
-        draw_sky()
-        draw_ground()
-        draw_sun()
-        // console.log(this.shapes.desert_plane.arrays.position)
+        let draw_rocks = () => {
+            let model_transform = Mat4.identity();
+            model_transform = model_transform.times(Mat4.translation(-10, -4, -15));
+            this.shapes.rock.draw(context, program_state, model_transform, this.materials.rock);
+            model_transform = model_transform.times(Mat4.translation(-2, 0, -2).times(Mat4.scale(2,2,2)));
+            this.shapes.rock.draw(context, program_state, model_transform, this.materials.rock);
+            model_transform = model_transform.times(Mat4.translation(2, 0, 2));
+            this.shapes.rock.draw(context, program_state, model_transform, this.materials.rock);
+        }
+        let draw_cacti = () => {
+            let model_transform = Mat4.identity();
+            model_transform = model_transform.times(Mat4.translation(15, -4, -15).times(Mat4.scale(1,1,1)));
+            this.shapes.blocky_cactus.draw(context, program_state, model_transform, this.materials.cactus);
+            model_transform = model_transform.times(Mat4.translation(0, 0, 0).times(Mat4.scale(1,1,1)));
+            this.shapes.cactus.draw(context, program_state, model_transform, this.materials.cactus);
+            model_transform = model_transform.times(Mat4.translation(1, 1, 0).times(Mat4.scale(0.25,0.25,0.25)));
+            this.shapes.cactus.draw(context, program_state, model_transform, this.materials.cactus);
+            model_transform = model_transform.times(Mat4.translation(-2, 1, 0).times(Mat4.scale(2,2,2)));
+            this.shapes.cactus.draw(context, program_state, model_transform, this.materials.cactus);        
+        }
+        draw_sky();
+        draw_ground();
+        draw_sun();
+        draw_rocks();
+        draw_cacti();
     }
 
     display_menu(context, program_state, t) {
@@ -351,6 +378,7 @@ export class Target_Terminator extends Scene {
 
         const light_position = vec4(10, 10, 10, 1);
         program_state.lights = [new Light(light_position, color(1, 1, 1, 1), 1000)];
+        program_state.lights = [new Light(vec4(0,-30,-10,1), hex_color("#FFF2B3"), 1000)];
 
         let t = program_state.animation_time;
         if (this.animation_queue.length > 0) {
