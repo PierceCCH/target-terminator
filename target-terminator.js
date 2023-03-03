@@ -24,6 +24,30 @@ const {
 
 const { Textured_Phong, Basic_Shader } = defs;
 
+/* Trying to get flat shading to work */
+// let des = new Shape_From_File("./assets/desert_plane.obj");
+// console.log(des)
+// let des_pos = [...des.arrays.position];
+// console.log(des_pos)
+
+// class desert_manual extends Shape {
+//     constructor() {
+//         super("position", "normal",);
+//         // Loop 3 times (for each axis), and inside loop twice (for opposing cube sides):
+//         this.arrays.position = Vector3.cast(
+//             [-1, -1, -1], [1, -1, -1], [-1, -1, 1], [1, -1, 1], [1, 1, -1], [-1, 1, -1], [1, 1, 1], [-1, 1, 1],
+//             [-1, -1, -1], [-1, -1, 1], [-1, 1, -1], [-1, 1, 1], [1, -1, 1], [1, -1, -1], [1, 1, 1], [1, 1, -1],
+//             [-1, -1, 1], [1, -1, 1], [-1, 1, 1], [1, 1, 1], [1, -1, -1], [-1, -1, -1], [1, 1, -1], [-1, 1, -1]);
+//         this.arrays.normal = Vector3.cast(
+//             [0, -1, 0], [0, -1, 0], [0, -1, 0], [0, -1, 0], [0, 1, 0], [0, 1, 0], [0, 1, 0], [0, 1, 0],
+//             [-1, 0, 0], [-1, 0, 0], [-1, 0, 0], [-1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0],
+//             [0, 0, 1], [0, 0, 1], [0, 0, 1], [0, 0, 1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1]);
+//         // Arrange the vertices into a square shape in texture space too:
+//         this.indices.push(0, 1, 2, 1, 3, 2, 4, 5, 6, 5, 7, 6, 8, 9, 10, 9, 11, 10, 12, 13,
+//             14, 13, 15, 14, 16, 17, 18, 17, 19, 18, 20, 21, 22, 21, 23, 22);
+//     }
+// }
+
 export class Target_Terminator extends Scene {
   /**
    *  **Base_scene** is a Scene that can be added to any display canvas.
@@ -33,18 +57,22 @@ export class Target_Terminator extends Scene {
     // constructor(): Scenes begin by populating initial values like the Shapes and Materials they'll need.
     super();
 
-    this.game_state = 0; // 0 = start, 1 = playing, 2 = end
-    this.round_time = 0; // Timer for each round
+        this.game_state = 0; // 0 = start, 1 = playing, 2 = end
+        this.round_time = 0; // Timer for each round
 
-    this.targets_array = []; // Array of targets
-    // each shape should also store some data about its lifetime
-    this.shapes = {
-      cube: new defs.Cube(),
-      sphere: new defs.Subdivision_Sphere(4),
-      donut: new defs.Torus(15, 15),
-      teapot: new Shape_From_File("./assets/teapot.obj"),
-      text: new Text_Line(35),
-    };
+        this.targets_array = []; // Array of targets
+        // each shape should also store some data about its lifetime
+        this.shapes = {
+            cube: new defs.Cube(),
+            sphere: new defs.Subdivision_Sphere(4),
+            donut: new defs.Torus(15, 15),
+            teapot: new Shape_From_File("./assets/teapot.obj"),
+            text: new Text_Line(35),
+            desert_plane: new Shape_From_File("./assets/desert_plane.obj"),
+            rock: new (defs.Subdivision_Sphere.prototype.make_flat_shaded_version())(2),
+            cactus: new Shape_From_File("./assets/cactus.obj"),
+            blocky_cactus: new Shape_From_File("./assets/blocky_cactus.obj"),
+        }
 
     const texture = new defs.Textured_Phong(1);
     const phong = new defs.Phong_Shader();
@@ -77,6 +105,26 @@ export class Target_Terminator extends Scene {
       }),
       basic: new Material(new Basic_Shader()),
       mybasic: new Material(new My_Basic_Shader()),
+            sky: new Material(new defs.Phong_Shader(), {
+                color: hex_color("#87CEEB"), 
+                ambient: 1, diffusivity: 0, specularity: 0,
+            }),
+            ground: new Material(new defs.Phong_Shader(), {
+                color: hex_color("#C2B280"),
+                ambient: 0.6, diffusivity: 1, specularity: 1,
+            }),
+            sun: new Material(new defs.Phong_Shader(), {
+                color: hex_color("#FFE87C"),
+                ambient: 1, specularity: 0,
+            }),
+            rock: new Material(new defs.Phong_Shader(), {
+                color: hex_color("#808080"),
+                ambient: 0.6, diffusivity: 1, specularity: 0,
+            }),
+            cactus: new Material(new defs.Phong_Shader(), {
+                color: hex_color("#5C755E"),
+                ambient: 1, diffusivity: 0, specularity: 0,
+            }),
     };
 
     this.initial_camera_location = Mat4.look_at(
@@ -165,6 +213,50 @@ export class Target_Terminator extends Scene {
     };
     this.animation_queue.push(animation_bullet);
   }
+
+    display_background(context, program_state) {
+        let draw_sky = () => {
+            let model_transform = Mat4.identity();
+            model_transform = model_transform.times(Mat4.scale(40, 40, 40));
+            this.shapes.cube.draw(context, program_state, model_transform, this.materials.sky);
+        }
+        let draw_ground = () => {
+            let model_transform = Mat4.identity();
+            model_transform = model_transform.times(Mat4.translation(0, -5, 0)).times(Mat4.scale(40, 40, 40));
+            this.shapes.desert_plane.draw(context, program_state, model_transform, this.materials.ground);
+        }
+        let draw_sun = () => {
+            let model_transform = Mat4.identity();
+            model_transform = model_transform.times(Mat4.translation(-20, 15, -30)).times(Mat4.scale(3, 3, 3));
+            // The parameters of the Light are: position, color, size
+            this.shapes.sphere.draw(context, program_state, model_transform, this.materials.sun);
+        }
+        let draw_rocks = () => {
+            let model_transform = Mat4.identity();
+            model_transform = model_transform.times(Mat4.translation(-10, -4, -15));
+            this.shapes.rock.draw(context, program_state, model_transform, this.materials.rock);
+            model_transform = model_transform.times(Mat4.translation(-2, 0, -2).times(Mat4.scale(2,2,2)));
+            this.shapes.rock.draw(context, program_state, model_transform, this.materials.rock);
+            model_transform = model_transform.times(Mat4.translation(2, 0, 2));
+            this.shapes.rock.draw(context, program_state, model_transform, this.materials.rock);
+        }
+        let draw_cacti = () => {
+            let model_transform = Mat4.identity();
+            model_transform = model_transform.times(Mat4.translation(15, -4, -15).times(Mat4.scale(1,1,1)));
+            this.shapes.blocky_cactus.draw(context, program_state, model_transform, this.materials.cactus);
+            model_transform = model_transform.times(Mat4.translation(0, 0, 0).times(Mat4.scale(1,1,1)));
+            this.shapes.cactus.draw(context, program_state, model_transform, this.materials.cactus);
+            model_transform = model_transform.times(Mat4.translation(1, 1, 0).times(Mat4.scale(0.25,0.25,0.25)));
+            this.shapes.cactus.draw(context, program_state, model_transform, this.materials.cactus);
+            model_transform = model_transform.times(Mat4.translation(-2, 1, 0).times(Mat4.scale(2,2,2)));
+            this.shapes.cactus.draw(context, program_state, model_transform, this.materials.cactus);        
+        }
+        draw_sky();
+        draw_ground();
+        draw_sun();
+        draw_rocks();
+        draw_cacti();
+    }
 
   display_menu(context, program_state, t) {
     const shapes = this.options.shapes;
@@ -501,6 +593,7 @@ export class Target_Terminator extends Scene {
 
     const light_position = vec4(10, 10, 10, 1);
     program_state.lights = [new Light(light_position, color(1, 1, 1, 1), 1000)];
+        program_state.lights = [new Light(vec4(0,-30,-10,1), hex_color("#FFF2B3"), 1000)];
 
     let t = program_state.animation_time;
     if (this.animation_queue.length > 0) {
@@ -543,6 +636,7 @@ export class Target_Terminator extends Scene {
         break;
       case 1:
         this.display_shapes(context, program_state, this.options, t);
+        this.display_background(context, program_state);
         break;
       case 2:
         // game over
