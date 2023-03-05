@@ -2,51 +2,22 @@ import { defs, tiny } from "./examples/common.js";
 import { Shape_From_File } from "./examples/obj-file-demo.js";
 import { Text_Line } from "./examples/text-demo.js";
 import Target from "./spawn-random-targets.js";
+import FirstPersonCamera from "./first-person-camera.js";
 
 const {
-  Vector,
-  Vector3,
-  Vector4,
   vec,
   vec3,
   vec4,
   color,
   hex_color,
-  Shader,
-  Matrix,
   Mat4,
   Light,
-  Shape,
   Material,
   Scene,
   Texture,
 } = tiny;
 
 const { Textured_Phong, Basic_Shader } = defs;
-
-/* Trying to get flat shading to work */
-// let des = new Shape_From_File("./assets/desert_plane.obj");
-// console.log(des)
-// let des_pos = [...des.arrays.position];
-// console.log(des_pos)
-
-// class desert_manual extends Shape {
-//     constructor() {
-//         super("position", "normal",);
-//         // Loop 3 times (for each axis), and inside loop twice (for opposing cube sides):
-//         this.arrays.position = Vector3.cast(
-//             [-1, -1, -1], [1, -1, -1], [-1, -1, 1], [1, -1, 1], [1, 1, -1], [-1, 1, -1], [1, 1, 1], [-1, 1, 1],
-//             [-1, -1, -1], [-1, -1, 1], [-1, 1, -1], [-1, 1, 1], [1, -1, 1], [1, -1, -1], [1, 1, 1], [1, 1, -1],
-//             [-1, -1, 1], [1, -1, 1], [-1, 1, 1], [1, 1, 1], [1, -1, -1], [-1, -1, -1], [1, 1, -1], [-1, 1, -1]);
-//         this.arrays.normal = Vector3.cast(
-//             [0, -1, 0], [0, -1, 0], [0, -1, 0], [0, -1, 0], [0, 1, 0], [0, 1, 0], [0, 1, 0], [0, 1, 0],
-//             [-1, 0, 0], [-1, 0, 0], [-1, 0, 0], [-1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0],
-//             [0, 0, 1], [0, 0, 1], [0, 0, 1], [0, 0, 1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1]);
-//         // Arrange the vertices into a square shape in texture space too:
-//         this.indices.push(0, 1, 2, 1, 3, 2, 4, 5, 6, 5, 7, 6, 8, 9, 10, 9, 11, 10, 12, 13,
-//             14, 13, 15, 14, 16, 17, 18, 17, 19, 18, 20, 21, 22, 21, 23, 22);
-//     }
-// }
 
 export class Target_Terminator extends Scene {
   /**
@@ -56,23 +27,22 @@ export class Target_Terminator extends Scene {
   constructor() {
     // constructor(): Scenes begin by populating initial values like the Shapes and Materials they'll need.
     super();
+    this.game_state = 0; // 0 = start, 1 = playing, 2 = end
+    this.round_time = 0; // Timer for each round
 
-        this.game_state = 0; // 0 = start, 1 = playing, 2 = end
-        this.round_time = 0; // Timer for each round
-
-        this.targets_array = []; // Array of targets
-        // each shape should also store some data about its lifetime
-        this.shapes = {
-            cube: new defs.Cube(),
-            sphere: new defs.Subdivision_Sphere(4),
-            donut: new defs.Torus(15, 15),
-            teapot: new Shape_From_File("./assets/teapot.obj"),
-            text: new Text_Line(35),
-            desert_plane: new Shape_From_File("./assets/desert_plane.obj"),
-            rock: new (defs.Subdivision_Sphere.prototype.make_flat_shaded_version())(2),
-            cactus: new Shape_From_File("./assets/cactus.obj"),
-            blocky_cactus: new Shape_From_File("./assets/blocky_cactus.obj"),
-        }
+    this.targets_array = []; // Array of targets
+    // each shape should also store some data about its lifetime
+    this.shapes = {
+        cube: new defs.Cube(),
+        sphere: new defs.Subdivision_Sphere(4),
+        donut: new defs.Torus(15, 15),
+        teapot: new Shape_From_File("./assets/teapot.obj"),
+        text: new Text_Line(35),
+        desert_plane: new Shape_From_File("./assets/desert_plane.obj"),
+        rock: new (defs.Subdivision_Sphere.prototype.make_flat_shaded_version())(2),
+        cactus: new Shape_From_File("./assets/cactus.obj"),
+        blocky_cactus: new Shape_From_File("./assets/blocky_cactus.obj"),
+    }
 
     const texture = new defs.Textured_Phong(1);
     const phong = new defs.Phong_Shader();
@@ -126,12 +96,7 @@ export class Target_Terminator extends Scene {
                 ambient: 1, diffusivity: 0, specularity: 0,
             }),
     };
-
-    this.initial_camera_location = Mat4.look_at(
-      vec3(0, 10, 20),
-      vec3(0, 0, 0),
-      vec3(0, 1, 0)
-    );
+    this.camera = new FirstPersonCamera(0, 0, 10);
     this.mouse_position;
     this.options = {
       shapes: {
@@ -492,7 +457,6 @@ export class Target_Terminator extends Scene {
         //if array is empty or if last element was created more than spawn_freq seconds ago
         let new_target = new Target(x, y, z, t, exposure_time, shape);
         this.targets_array.push(new_target);
-        console.log("placed in array");
       }
     }
     //display all shapes in array
@@ -540,7 +504,6 @@ export class Target_Terminator extends Scene {
       //periodically pop from array
       if (Math.floor(t) - this.targets_array[0].time_created > exposure_time) {
         this.targets_array.shift();
-        console.log("popped from array");
       }
     }
 
@@ -551,49 +514,39 @@ export class Target_Terminator extends Scene {
   }
 
   display(context, program_state) {
+    let lookAt = this.camera.lookAt;
+    program_state.set_camera(lookAt);
+    
     if (!context.scratchpad.controls) {
-      this.children.push(
-        (context.scratchpad.controls = new defs.Movement_Controls())
-      );
-
-      // Define the global camera and projection matrices, which are stored in program_state.
-      let LookAt = Mat4.look_at(vec3(0, 0, 10), vec3(0, 0, 0), vec3(0, 1, 0));
-      program_state.set_camera(LookAt);
-
+      this.children.push((context.scratchpad.controls = new defs.Movement_Controls()));
+      
       let canvas = context.canvas;
-      const mouse_position = (e, rect = canvas.getBoundingClientRect()) =>
-        vec(
-          (e.clientX - (rect.left + rect.right) / 2) /
-            ((rect.right - rect.left) / 2),
-          (e.clientY - (rect.bottom + rect.top) / 2) /
-            ((rect.top - rect.bottom) / 2)
-        );
-
+      const mouse_position = (e, rect = canvas.getBoundingClientRect()) => vec(
+        (e.clientX - (rect.left + rect.right) / 2) / ((rect.right - rect.left) / 2), 
+        (e.clientY - (rect.bottom + rect.top) / 2) / ((rect.top - rect.bottom) / 2)
+      );
+      
       canvas.addEventListener("mousedown", (e) => {
         e.preventDefault();
         this.my_mouse_down(e, mouse_position(e), context, program_state);
       });
-
-      // Track position of mouse within the viewport
       canvas.addEventListener("mousemove", (e) => {
         e.preventDefault();
         this.mouse_position = mouse_position(e);
         let mouseX = this.mouse_position[0];
         let mouseY = this.mouse_position[1];
-        console.log(mouseX, mouseY);
+        
+        if (this.game_state == 1){
+          lookAt = this.camera.update_view(mouseX, mouseY);
+        }
       });
     }
 
-    program_state.projection_transform = Mat4.perspective(
-      Math.PI / 4,
-      context.width / context.height,
-      1,
-      100
-    );
+    program_state.projection_transform = Mat4.perspective(Math.PI / 4, context.width / context.height, 1, 100);
 
     const light_position = vec4(10, 10, 10, 1);
     program_state.lights = [new Light(light_position, color(1, 1, 1, 1), 1000)];
-        program_state.lights = [new Light(vec4(0,-30,-10,1), hex_color("#FFF2B3"), 1000)];
+    program_state.lights = [new Light(vec4(0,-30,-10,1), hex_color("#FFF2B3"), 1000)];
 
     let t = program_state.animation_time;
     if (this.animation_queue.length > 0) {
@@ -625,14 +578,11 @@ export class Target_Terminator extends Scene {
         }
       }
     }
-
+    
     // game state case
     switch (this.game_state) {
       case 0:
         this.display_menu(context, program_state, t); // menu
-        program_state.set_camera(
-          Mat4.look_at(vec3(0, 0, 10), vec3(0, 0, 0), vec3(0, 1, 0))
-        ); // fix camera
         break;
       case 1:
         this.display_shapes(context, program_state, this.options, t);
