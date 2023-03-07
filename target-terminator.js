@@ -98,6 +98,7 @@ export class Target_Terminator extends Scene {
     };
     this.camera = new FirstPersonCamera(0, 0, 10);
     this.mouse_position;
+    this.sensitivity = 1;
     this.options = {
       shapes: {
         cube: false,
@@ -144,7 +145,6 @@ export class Target_Terminator extends Scene {
       box.textContent = "Difficulty: " + this.options.difficulty;
     });
 
-    // Temporary cycle game state
     this.key_triggered_button("Cycle game state", [], () => {
       this.game_state += 1;
       if (this.game_state > 2) {
@@ -153,6 +153,16 @@ export class Target_Terminator extends Scene {
     });
     this.live_string((box) => {
       box.textContent = "Game State: " + this.game_state;
+    });
+
+    this.key_triggered_button("Cycle Sensitivity", [], () => {
+      this.sensitivity += 1;
+      if (this.sensitivity > 5) {
+        this.sensitivity = 1;
+      }
+    });
+    this.live_string((box) => {
+      box.textContent = "Sensitivity: " + this.sensitivity;
     });
   }
 
@@ -537,7 +547,7 @@ export class Target_Terminator extends Scene {
         let mouseY = this.mouse_position[1];
         
         if (this.game_state == 1){
-          lookAt = this.camera.update_view(mouseX, mouseY);
+          lookAt = this.camera.update_view(mouseX, mouseY, this.sensitivity);
         }
       });
     }
