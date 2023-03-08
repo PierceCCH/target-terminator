@@ -2,21 +2,16 @@ import { defs, tiny } from "./examples/common.js";
 import { Shape_From_File } from "./examples/obj-file-demo.js";
 import { Text_Line } from "./examples/text-demo.js";
 import Target from "./spawn-random-targets.js";
+import FirstPersonCamera from "./first-person-camera.js";
+import DisplayMenu from "./display-menu.js";
 
 const {
-  Vector,
-  Vector3,
-  Vector4,
   vec,
-  vec3,
   vec4,
   color,
   hex_color,
-  Shader,
-  Matrix,
   Mat4,
   Light,
-  Shape,
   Material,
   Scene,
   Texture,
@@ -24,55 +19,25 @@ const {
 
 const { Textured_Phong, Basic_Shader } = defs;
 
-/* Trying to get flat shading to work */
-// let des = new Shape_From_File("./assets/desert_plane.obj");
-// console.log(des)
-// let des_pos = [...des.arrays.position];
-// console.log(des_pos)
-
-// class desert_manual extends Shape {
-//     constructor() {
-//         super("position", "normal",);
-//         // Loop 3 times (for each axis), and inside loop twice (for opposing cube sides):
-//         this.arrays.position = Vector3.cast(
-//             [-1, -1, -1], [1, -1, -1], [-1, -1, 1], [1, -1, 1], [1, 1, -1], [-1, 1, -1], [1, 1, 1], [-1, 1, 1],
-//             [-1, -1, -1], [-1, -1, 1], [-1, 1, -1], [-1, 1, 1], [1, -1, 1], [1, -1, -1], [1, 1, 1], [1, 1, -1],
-//             [-1, -1, 1], [1, -1, 1], [-1, 1, 1], [1, 1, 1], [1, -1, -1], [-1, -1, -1], [1, 1, -1], [-1, 1, -1]);
-//         this.arrays.normal = Vector3.cast(
-//             [0, -1, 0], [0, -1, 0], [0, -1, 0], [0, -1, 0], [0, 1, 0], [0, 1, 0], [0, 1, 0], [0, 1, 0],
-//             [-1, 0, 0], [-1, 0, 0], [-1, 0, 0], [-1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0],
-//             [0, 0, 1], [0, 0, 1], [0, 0, 1], [0, 0, 1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1]);
-//         // Arrange the vertices into a square shape in texture space too:
-//         this.indices.push(0, 1, 2, 1, 3, 2, 4, 5, 6, 5, 7, 6, 8, 9, 10, 9, 11, 10, 12, 13,
-//             14, 13, 15, 14, 16, 17, 18, 17, 19, 18, 20, 21, 22, 21, 23, 22);
-//     }
-// }
-
 export class Target_Terminator extends Scene {
-  /**
-   *  **Base_scene** is a Scene that can be added to any display canvas.
-   *  Setup the shapes, materials, camera, and lighting here.
-   */
   constructor() {
-    // constructor(): Scenes begin by populating initial values like the Shapes and Materials they'll need.
     super();
+    this.game_state = 0; // 0 = start, 1 = playing, 2 = end
+    this.round_time = 0; // Timer for each round
 
-        this.game_state = 0; // 0 = start, 1 = playing, 2 = end
-        this.round_time = 0; // Timer for each round
-
-        this.targets_array = []; // Array of targets
-        // each shape should also store some data about its lifetime
-        this.shapes = {
-            cube: new defs.Cube(),
-            sphere: new defs.Subdivision_Sphere(4),
-            donut: new defs.Torus(15, 15),
-            teapot: new Shape_From_File("./assets/teapot.obj"),
-            text: new Text_Line(35),
-            desert_plane: new Shape_From_File("./assets/desert_plane.obj"),
-            rock: new (defs.Subdivision_Sphere.prototype.make_flat_shaded_version())(2),
-            cactus: new Shape_From_File("./assets/cactus.obj"),
-            blocky_cactus: new Shape_From_File("./assets/blocky_cactus.obj"),
-        }
+    this.targets_array = []; // Array of targets
+    // each shape should also store some data about its lifetime
+    this.shapes = {
+        cube: new defs.Cube(),
+        sphere: new defs.Subdivision_Sphere(4),
+        donut: new defs.Torus(15, 15),
+        teapot: new Shape_From_File("./assets/teapot.obj"),
+        text: new Text_Line(35),
+        desert_plane: new Shape_From_File("./assets/desert_plane.obj"),
+        rock: new (defs.Subdivision_Sphere.prototype.make_flat_shaded_version())(2),
+        cactus: new Shape_From_File("./assets/cactus.obj"),
+        blocky_cactus: new Shape_From_File("./assets/blocky_cactus.obj"),
+    }
 
     const texture = new defs.Textured_Phong(1);
     const phong = new defs.Phong_Shader();
@@ -126,15 +91,11 @@ export class Target_Terminator extends Scene {
                 ambient: 1, diffusivity: 0, specularity: 0,
             }),
     };
-
-    this.initial_camera_location = Mat4.look_at(
-      vec3(0, 10, 20),
-      vec3(0, 0, 0),
-      vec3(0, 1, 0)
-    );
+    this.camera = new FirstPersonCamera(0, 0, 10);
     this.mouse_position;
+  
     this.options = {
-      shapes: {
+      toggleShapes: {
         cube: false,
         sphere: false,
         donut: false,
@@ -142,6 +103,7 @@ export class Target_Terminator extends Scene {
       },
       obstacles: false,
       difficulty: 1,
+      sensitivity: 1
     };
     this.animation_queue = [];
     this.spawned_entities = {}; // store all shapes in scene
@@ -150,19 +112,19 @@ export class Target_Terminator extends Scene {
   // TEMPORARY: Control Panel to change shapes, speed, etc.
   make_control_panel() {
     this.key_triggered_button("Toggle cube", [], () => {
-      this.options.shapes.cube = !this.options.shapes.cube;
+      this.options.toggleShapes.cube = !this.options.toggleShapes.cube;
     });
     this.new_line();
     this.key_triggered_button("Toggle sphere", [], () => {
-      this.options.shapes.sphere = !this.options.shapes.sphere;
+      this.options.toggleShapes.sphere = !this.options.toggleShapes.sphere;
     });
     this.new_line();
     this.key_triggered_button("Toggle donut", [], () => {
-      this.options.shapes.donut = !this.options.shapes.donut;
+      this.options.toggleShapes.donut = !this.options.toggleShapes.donut;
     });
     this.new_line();
     this.key_triggered_button("Toggle teapot", [], () => {
-      this.options.shapes.teapot = !this.options.shapes.teapot;
+      this.options.toggleShapes.teapot = !this.options.toggleShapes.teapot;
     });
     this.new_line();
     this.key_triggered_button("Toggle obstacles", [], () => {
@@ -179,7 +141,6 @@ export class Target_Terminator extends Scene {
       box.textContent = "Difficulty: " + this.options.difficulty;
     });
 
-    // Temporary cycle game state
     this.key_triggered_button("Cycle game state", [], () => {
       this.game_state += 1;
       if (this.game_state > 2) {
@@ -189,9 +150,19 @@ export class Target_Terminator extends Scene {
     this.live_string((box) => {
       box.textContent = "Game State: " + this.game_state;
     });
+
+    this.key_triggered_button("Cycle Sensitivity", [], () => {
+      this.options.sensitivity += 1;
+      if (this.options.sensitivity > 5) {
+        this.options.sensitivity = 1;
+      }
+    });
+    this.live_string((box) => {
+      box.textContent = "Sensitivity: " + this.options.sensitivity;
+    });
   }
 
-  my_mouse_down(e, pos, context, program_state) {
+  fire_teapot(e, pos, context, program_state) {
     let pos_ndc_near = vec4(pos[0], pos[1], -1.0, 1.0);
     let pos_ndc_far = vec4(pos[0], pos[1], 1.0, 1.0);
     let center_ndc_near = vec4(0.0, 0.0, -1.0, 1.0);
@@ -258,173 +229,9 @@ export class Target_Terminator extends Scene {
         draw_cacti();
     }
 
-  display_menu(context, program_state, t) {
-    const shapes = this.options.shapes;
-
-    // Background
-    let background_transform = Mat4.identity();
-    background_transform = background_transform
-      .times(Mat4.translation(0, 0, -10))
-      .times(Mat4.scale(20, 20, 0.2));
-    this.shapes.cube.draw(
-      context,
-      program_state,
-      background_transform,
-      this.materials.texture
-    );
-
-    // Standard for all option texts
-    let option_text_transform = Mat4.identity();
-    option_text_transform = option_text_transform
-      .times(Mat4.translation(0.1, -0.9, 0))
-      .times(Mat4.scale(0.12, 0.5, 0));
-
-    // Play Button
-    let play_button_transform = Mat4.identity();
-    play_button_transform = play_button_transform
-      .times(Mat4.translation(-3, 0, 0))
-      .times(Mat4.scale(2, 0.7, 0.2))
-      .times(Mat4.rotation(0.15, 0, 1, 0));
-    this.shapes.cube.draw(
-      context,
-      program_state,
-      play_button_transform,
-      this.materials.menu_button
-    );
-    const cube_side = Mat4.rotation(0, 1, 0, 0)
-      .times(Mat4.rotation(0, 0, 1, 0))
-      .times(Mat4.translation(-0.9, 0.9, 1.01));
-    let string = "PLAY";
-    // Draw a Text_String for every line in our string, up to 30 lines:
-    this.shapes.text.set_string(string, context.context);
-    this.shapes.text.draw(
-      context,
-      program_state,
-      play_button_transform
-        .times(cube_side)
-        .times(Mat4.translation(0.4, -0.9, 0))
-        .times(Mat4.scale(0.2, 0.4, 0)),
-      this.materials.text_image
-    );
-
-    // Toggle Cube button
-    let cube_button_transform = Mat4.identity();
-    cube_button_transform = cube_button_transform
-      .times(Mat4.translation(4, 3, 0))
-      .times(Mat4.scale(1.7, 0.5, 0.2))
-      .times(Mat4.rotation(-0.15, -1, 1, 0));
-    this.shapes.cube.draw(
-      context,
-      program_state,
-      cube_button_transform,
-      this.materials.menu_button
-    );
-    string = "Cubes:" + (shapes.cube ? "On" : "Off");
-    this.shapes.text.set_string(string, context.context);
-    this.shapes.text.draw(
-      context,
-      program_state,
-      cube_button_transform.times(cube_side).times(option_text_transform),
-      this.materials.text_image
-    );
-
-    // Toggle Sphere button
-    let sphere_button_transform = cube_button_transform;
-    sphere_button_transform = sphere_button_transform.times(
-      Mat4.translation(0, -3, 0)
-    );
-    this.shapes.cube.draw(
-      context,
-      program_state,
-      sphere_button_transform,
-      this.materials.menu_button
-    );
-    string = "Spheres:" + (shapes.sphere ? "On" : "Off");
-    this.shapes.text.set_string(string, context.context);
-    this.shapes.text.draw(
-      context,
-      program_state,
-      sphere_button_transform.times(cube_side).times(option_text_transform),
-      this.materials.text_image
-    );
-
-    // Toggle Donut button
-    let donut_button_transform = sphere_button_transform;
-    donut_button_transform = donut_button_transform.times(
-      Mat4.translation(0, -3, 0)
-    );
-    this.shapes.cube.draw(
-      context,
-      program_state,
-      donut_button_transform,
-      this.materials.menu_button
-    );
-    string = "Donuts:" + (shapes.donut ? "On" : "Off");
-    this.shapes.text.set_string(string, context.context);
-    this.shapes.text.draw(
-      context,
-      program_state,
-      donut_button_transform.times(cube_side).times(option_text_transform),
-      this.materials.text_image
-    );
-
-    // Toggle Teapot button
-    let teapot_button_transform = donut_button_transform;
-    teapot_button_transform = teapot_button_transform.times(
-      Mat4.translation(0, -3, 0)
-    );
-    this.shapes.cube.draw(
-      context,
-      program_state,
-      teapot_button_transform,
-      this.materials.menu_button
-    );
-    string = "Teapots:" + (shapes.teapot ? "On" : "Off");
-    this.shapes.text.set_string(string, context.context);
-    this.shapes.text.draw(
-      context,
-      program_state,
-      teapot_button_transform.times(cube_side).times(option_text_transform),
-      this.materials.text_image
-    );
-
-    // Cycle Difficulty button
-    let difficulty_button_transform = teapot_button_transform;
-    difficulty_button_transform = difficulty_button_transform.times(
-      Mat4.translation(0, -3, 0)
-    );
-    this.shapes.cube.draw(
-      context,
-      program_state,
-      difficulty_button_transform,
-      this.materials.menu_button
-    );
-    let difficulty = "Easy";
-    switch (this.options.difficulty) {
-      case 1:
-        difficulty = "Easy";
-        break;
-      case 2:
-        difficulty = "Medium";
-        break;
-      case 3:
-        difficulty = "Hard";
-        break;
-    }
-    string = difficulty;
-    this.shapes.text.set_string(string, context.context);
-    this.shapes.text.draw(
-      context,
-      program_state,
-      difficulty_button_transform.times(cube_side).times(option_text_transform),
-      this.materials.text_image
-    );
-  }
-
-  // @Zinc: u can handle spawning shapes here
   // Method to display shapes in a random position on the screen based on a set of options
   display_shapes(context, program_state, options) {
-    const { shapes, obstacles, difficulty } = options; // Destructure options object, difficulty determine how fast objects despawn
+    const { toggleShapes, obstacles, difficulty } = options; // Destructure options object, difficulty determine how fast objects despawn
     const t = program_state.animation_time / 1000;
     let model_transform = Mat4.identity();
     let exposure_time = 0; //How long a target is exposed for bfr disappearing
@@ -469,7 +276,7 @@ export class Target_Terminator extends Scene {
             shape_index = "teapot";
             break;
         }
-        if (shapes[shape_index] == true) {
+        if (toggleShapes[shape_index] == true) {
           shape = shape_index;
           break;
         }
@@ -492,7 +299,6 @@ export class Target_Terminator extends Scene {
         //if array is empty or if last element was created more than spawn_freq seconds ago
         let new_target = new Target(x, y, z, t, exposure_time, shape);
         this.targets_array.push(new_target);
-        console.log("placed in array");
       }
     }
     //display all shapes in array
@@ -540,7 +346,6 @@ export class Target_Terminator extends Scene {
       //periodically pop from array
       if (Math.floor(t) - this.targets_array[0].time_created > exposure_time) {
         this.targets_array.shift();
-        console.log("popped from array");
       }
     }
 
@@ -551,49 +356,39 @@ export class Target_Terminator extends Scene {
   }
 
   display(context, program_state) {
+    let lookAt = this.camera.lookAt;
+    program_state.set_camera(lookAt);
+    
     if (!context.scratchpad.controls) {
-      this.children.push(
-        (context.scratchpad.controls = new defs.Movement_Controls())
-      );
-
-      // Define the global camera and projection matrices, which are stored in program_state.
-      let LookAt = Mat4.look_at(vec3(0, 0, 10), vec3(0, 0, 0), vec3(0, 1, 0));
-      program_state.set_camera(LookAt);
-
       let canvas = context.canvas;
-      const mouse_position = (e, rect = canvas.getBoundingClientRect()) =>
-        vec(
-          (e.clientX - (rect.left + rect.right) / 2) /
-            ((rect.right - rect.left) / 2),
-          (e.clientY - (rect.bottom + rect.top) / 2) /
-            ((rect.top - rect.bottom) / 2)
-        );
-
-      canvas.addEventListener("mousedown", (e) => {
+      const mouse_position = (e, rect = canvas.getBoundingClientRect()) => vec(
+        (e.clientX - (rect.left + rect.right) / 2) / ((rect.right - rect.left) / 2), 
+        (e.clientY - (rect.bottom + rect.top) / 2) / ((rect.top - rect.bottom) / 2)
+      );
+      
+      // Added pointer lock to the game. https://developer.mozilla.org/en-US/docs/Web/API/Pointer_Lock_API
+      canvas.addEventListener("mousedown", async (e) => {
         e.preventDefault();
-        this.my_mouse_down(e, mouse_position(e), context, program_state);
-      });
+          await canvas.requestPointerLock();
 
-      // Track position of mouse within the viewport
-      canvas.addEventListener("mousemove", (e) => {
-        e.preventDefault();
-        this.mouse_position = mouse_position(e);
-        let mouseX = this.mouse_position[0];
-        let mouseY = this.mouse_position[1];
-        console.log(mouseX, mouseY);
-      });
+          canvas.addEventListener("mousemove", (e) => {
+            e.preventDefault();
+            let del_x = e.movementX;
+            let del_y = e.movementY;
+            if (this.game_state == 1){
+              lookAt = this.camera.update_view(del_x, del_y, this.options.sensitivity);
+            }
+          });
+          this.fire_teapot(e, mouse_position(e), context, program_state);
+        }
+      );
     }
 
-    program_state.projection_transform = Mat4.perspective(
-      Math.PI / 4,
-      context.width / context.height,
-      1,
-      100
-    );
+    program_state.projection_transform = Mat4.perspective(Math.PI / 4, context.width / context.height, 1, 100);
 
     const light_position = vec4(10, 10, 10, 1);
     program_state.lights = [new Light(light_position, color(1, 1, 1, 1), 1000)];
-        program_state.lights = [new Light(vec4(0,-30,-10,1), hex_color("#FFF2B3"), 1000)];
+    program_state.lights = [new Light(vec4(0,-30,-10,1), hex_color("#FFF2B3"), 1000)];
 
     let t = program_state.animation_time;
     if (this.animation_queue.length > 0) {
@@ -625,14 +420,11 @@ export class Target_Terminator extends Scene {
         }
       }
     }
-
+    
     // game state case
     switch (this.game_state) {
       case 0:
-        this.display_menu(context, program_state, t); // menu
-        program_state.set_camera(
-          Mat4.look_at(vec3(0, 0, 10), vec3(0, 0, 0), vec3(0, 1, 0))
-        ); // fix camera
+        DisplayMenu(context, program_state, this.options, this.shapes, this.materials);
         break;
       case 1:
         this.display_shapes(context, program_state, this.options, t);
