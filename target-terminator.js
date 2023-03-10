@@ -328,6 +328,7 @@ export class Target_Terminator extends Scene {
       canvas.addEventListener("mousedown", async (e) => {
         e.preventDefault();
         if (!canvas.pointerLockedElement){
+          this.pointer_locked = true;
           await canvas.requestPointerLock();
         }
         canvas.addEventListener("mousemove", (e) => {
@@ -392,6 +393,8 @@ export class Target_Terminator extends Scene {
         program_state.set_camera(this.camera.default);
         if (this.pointer_locked){
           console.log('pointer unlocked');
+          this.pointer_locked = false;
+          canvas.exitPointerLock();
         }
         break;
       default:

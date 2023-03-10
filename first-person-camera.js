@@ -10,6 +10,7 @@ export default class FirstPersonCamera {
     this.at = vec3(0, 0, 1);
     this.lookAt = Mat4.look_at(vec3(x, y, z), this.at, vec3(0, 1, 0));
     this.default = Mat4.look_at(vec3(x, y, z), vec3(0, 0, 1), vec3(0, 1, 0));
+    this.crosshair = this.at;
     
     this.theta = 0;
     this.phi = 0;
@@ -21,5 +22,9 @@ export default class FirstPersonCamera {
     this.at = vec3(this.theta, this.phi, 1)
     this.lookAt = Mat4.look_at(vec3(this.x, this.y, this.z), this.at, vec3(0, 1, 0));
     return this.lookAt;
+  }
+
+  draw_crosshair(context, program_state, shape) {
+    
   }
 }
