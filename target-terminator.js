@@ -4,6 +4,7 @@ import { Text_Line } from "./examples/text-demo.js";
 import Target from "./spawn-random-targets.js";
 import FirstPersonCamera from "./first-person-camera.js";
 import DisplayMenu from "./display-menu.js";
+import DisplayBackground from "./display-background.js";
 
 const {
   vec,
@@ -92,6 +93,7 @@ export class Target_Terminator extends Scene {
             }),
     };
     this.camera = new FirstPersonCamera(0, 0, 10);
+    this.pointer_locked = false;
     this.mouse_position;
   
     this.options = {
@@ -184,50 +186,6 @@ export class Target_Terminator extends Scene {
     };
     this.animation_queue.push(animation_bullet);
   }
-
-    display_background(context, program_state) {
-        let draw_sky = () => {
-            let model_transform = Mat4.identity();
-            model_transform = model_transform.times(Mat4.scale(40, 40, 40));
-            this.shapes.cube.draw(context, program_state, model_transform, this.materials.sky);
-        }
-        let draw_ground = () => {
-            let model_transform = Mat4.identity();
-            model_transform = model_transform.times(Mat4.translation(0, -5, 0)).times(Mat4.scale(40, 40, 40));
-            this.shapes.desert_plane.draw(context, program_state, model_transform, this.materials.ground);
-        }
-        let draw_sun = () => {
-            let model_transform = Mat4.identity();
-            model_transform = model_transform.times(Mat4.translation(-20, 15, -30)).times(Mat4.scale(3, 3, 3));
-            // The parameters of the Light are: position, color, size
-            this.shapes.sphere.draw(context, program_state, model_transform, this.materials.sun);
-        }
-        let draw_rocks = () => {
-            let model_transform = Mat4.identity();
-            model_transform = model_transform.times(Mat4.translation(-10, -4, -15));
-            this.shapes.rock.draw(context, program_state, model_transform, this.materials.rock);
-            model_transform = model_transform.times(Mat4.translation(-2, 0, -2).times(Mat4.scale(2,2,2)));
-            this.shapes.rock.draw(context, program_state, model_transform, this.materials.rock);
-            model_transform = model_transform.times(Mat4.translation(2, 0, 2));
-            this.shapes.rock.draw(context, program_state, model_transform, this.materials.rock);
-        }
-        let draw_cacti = () => {
-            let model_transform = Mat4.identity();
-            model_transform = model_transform.times(Mat4.translation(15, -4, -15).times(Mat4.scale(1,1,1)));
-            this.shapes.blocky_cactus.draw(context, program_state, model_transform, this.materials.cactus);
-            model_transform = model_transform.times(Mat4.translation(0, 0, 0).times(Mat4.scale(1,1,1)));
-            this.shapes.cactus.draw(context, program_state, model_transform, this.materials.cactus);
-            model_transform = model_transform.times(Mat4.translation(1, 1, 0).times(Mat4.scale(0.25,0.25,0.25)));
-            this.shapes.cactus.draw(context, program_state, model_transform, this.materials.cactus);
-            model_transform = model_transform.times(Mat4.translation(-2, 1, 0).times(Mat4.scale(2,2,2)));
-            this.shapes.cactus.draw(context, program_state, model_transform, this.materials.cactus);        
-        }
-        draw_sky();
-        draw_ground();
-        draw_sun();
-        draw_rocks();
-        draw_cacti();
-    }
 
   // Method to display shapes in a random position on the screen based on a set of options
   display_shapes(context, program_state, options) {
@@ -364,10 +322,10 @@ export class Target_Terminator extends Scene {
 
   display(context, program_state) {
     let lookAt = this.camera.lookAt;
+    let canvas = context.canvas;
     program_state.set_camera(lookAt);
     
     if (!context.scratchpad.controls) {
-      let canvas = context.canvas;
       const mouse_position = (e, rect = canvas.getBoundingClientRect()) => vec(
         (e.clientX - (rect.left + rect.right) / 2) / ((rect.right - rect.left) / 2), 
         (e.clientY - (rect.bottom + rect.top) / 2) / ((rect.top - rect.bottom) / 2)
@@ -376,19 +334,18 @@ export class Target_Terminator extends Scene {
       // Added pointer lock to the game. https://developer.mozilla.org/en-US/docs/Web/API/Pointer_Lock_API
       canvas.addEventListener("mousedown", async (e) => {
         e.preventDefault();
-          // await canvas.requestPointerLock();
-
-          canvas.addEventListener("mousemove", (e) => {
-            e.preventDefault();
-            let del_x = e.movementX;
-            let del_y = e.movementY;
-            if (this.game_state == 1){
-              lookAt = this.camera.update_view(del_x, del_y, this.options.sensitivity);
-            }
-          });
-          this.fire_teapot(e, mouse_position(e), context, program_state);
+        if (!canvas.pointerLockedElement){
+          await canvas.requestPointerLock();
         }
-      );
+        canvas.addEventListener("mousemove", (e) => {
+          let del_x = e.movementX;
+          let del_y = e.movementY;
+          if (this.game_state == 1){
+            lookAt = this.camera.update_view(del_x, del_y, this.options.sensitivity);
+          }
+        });
+        this.fire_teapot(e, mouse_position(e), context, program_state);
+      }, {once: true});
     }
 
     program_state.projection_transform = Mat4.perspective(Math.PI / 4, context.width / context.height, 1, 100);
@@ -440,14 +397,18 @@ export class Target_Terminator extends Scene {
     // game state case
     switch (this.game_state) {
       case 0:
+        program_state.set_camera(this.camera.default);
         DisplayMenu(context, program_state, this.options, this.shapes, this.materials);
         break;
       case 1:
         this.display_shapes(context, program_state, this.options, t);
-        this.display_background(context, program_state);
+        DisplayBackground(context, program_state, this.shapes, this.materials);
         break;
       case 2:
-        // game over
+        program_state.set_camera(this.camera.default);
+        if (this.pointer_locked){
+          console.log('pointer unlocked');
+        }
         break;
       default:
         break;

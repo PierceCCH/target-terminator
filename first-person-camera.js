@@ -9,6 +9,7 @@ export default class FirstPersonCamera {
     this.z = z;
     this.at = vec3(0, 0, 1);
     this.lookAt = Mat4.look_at(vec3(x, y, z), this.at, vec3(0, 1, 0));
+    this.default = Mat4.look_at(vec3(x, y, z), vec3(0, 0, 1), vec3(0, 1, 0));
     
     this.theta = 0;
     this.phi = 0;
