@@ -6,17 +6,8 @@ import FirstPersonCamera from "./first-person-camera.js";
 import DisplayMenu from "./display-menu.js";
 import DisplayBackground from "./display-background.js";
 
-const {
-  vec,
-  vec4,
-  color,
-  hex_color,
-  Mat4,
-  Light,
-  Material,
-  Scene,
-  Texture,
-} = tiny;
+const { vec, vec4, color, hex_color, Mat4, Light, Material, Scene, Texture } =
+  tiny;
 
 const { Textured_Phong, Basic_Shader } = defs;
 
@@ -29,16 +20,18 @@ export class Target_Terminator extends Scene {
     this.targets_array = []; // Array of targets
     // each shape should also store some data about its lifetime
     this.shapes = {
-        cube: new defs.Cube(),
-        sphere: new defs.Subdivision_Sphere(4),
-        donut: new defs.Torus(15, 15),
-        teapot: new Shape_From_File("./assets/teapot.obj"),
-        text: new Text_Line(35),
-        desert_plane: new Shape_From_File("./assets/desert_plane.obj"),
-        rock: new (defs.Subdivision_Sphere.prototype.make_flat_shaded_version())(2),
-        cactus: new Shape_From_File("./assets/cactus.obj"),
-        blocky_cactus: new Shape_From_File("./assets/blocky_cactus.obj"),
-    }
+      cube: new defs.Cube(),
+      sphere: new defs.Subdivision_Sphere(4),
+      donut: new defs.Torus(15, 15),
+      teapot: new Shape_From_File("./assets/teapot.obj"),
+      text: new Text_Line(35),
+      desert_plane: new Shape_From_File("./assets/desert_plane.obj"),
+      rock: new (defs.Subdivision_Sphere.prototype.make_flat_shaded_version())(
+        2
+      ),
+      cactus: new Shape_From_File("./assets/cactus.obj"),
+      blocky_cactus: new Shape_From_File("./assets/blocky_cactus.obj"),
+    };
 
     const texture = new defs.Textured_Phong(1);
     const phong = new defs.Phong_Shader();
@@ -56,9 +49,16 @@ export class Target_Terminator extends Scene {
         specularity: 0.1,
         texture: new Texture("assets/stars.png"),
       }),
-      menu_button: new Material(phong, {
-        color: hex_color("#00ffff"),
+      menu_background: new Material(new Textured_Phong(), {
+        color: hex_color("#F5CBA7"),
         ambient: 0.5,
+        diffusivity: 0.1,
+        specularity: 0.1,
+        texture: new Texture("assets/sand_dunes.jpg"),
+      }),
+      menu_button: new Material(phong, {
+        color: hex_color("#DC7633"),
+        ambient: 1,
         diffusivity: 0.3,
         specularity: 0.2,
         smoothness: 30,
@@ -69,33 +69,49 @@ export class Target_Terminator extends Scene {
         specularity: 0,
         texture: new Texture("assets/text.png"),
       }),
+      header_text_image: new Material(texture, {
+        color: hex_color("#424949"),
+        ambient: 0.2,
+        diffusivity: 0,
+        specularity: 0,
+        texture: new Texture("assets/text.png"),
+      }),
       basic: new Material(new Basic_Shader()),
       mybasic: new Material(new My_Basic_Shader()),
-            sky: new Material(new defs.Phong_Shader(), {
-                color: hex_color("#87CEEB"), 
-                ambient: 1, diffusivity: 0, specularity: 0,
-            }),
-            ground: new Material(new defs.Phong_Shader(), {
-                color: hex_color("#C2B280"),
-                ambient: 0.6, diffusivity: 1, specularity: 1,
-            }),
-            sun: new Material(new defs.Phong_Shader(), {
-                color: hex_color("#FFE87C"),
-                ambient: 1, specularity: 0,
-            }),
-            rock: new Material(new defs.Phong_Shader(), {
-                color: hex_color("#808080"),
-                ambient: 0.6, diffusivity: 1, specularity: 0,
-            }),
-            cactus: new Material(new defs.Phong_Shader(), {
-                color: hex_color("#5C755E"),
-                ambient: 1, diffusivity: 0, specularity: 0,
-            }),
+      sky: new Material(new defs.Phong_Shader(), {
+        color: hex_color("#87CEEB"),
+        ambient: 1,
+        diffusivity: 0,
+        specularity: 0,
+      }),
+      ground: new Material(new defs.Phong_Shader(), {
+        color: hex_color("#C2B280"),
+        ambient: 0.6,
+        diffusivity: 1,
+        specularity: 1,
+      }),
+      sun: new Material(new defs.Phong_Shader(), {
+        color: hex_color("#FFE87C"),
+        ambient: 1,
+        specularity: 0,
+      }),
+      rock: new Material(new defs.Phong_Shader(), {
+        color: hex_color("#808080"),
+        ambient: 0.6,
+        diffusivity: 1,
+        specularity: 0,
+      }),
+      cactus: new Material(new defs.Phong_Shader(), {
+        color: hex_color("#5C755E"),
+        ambient: 1,
+        diffusivity: 0,
+        specularity: 0,
+      }),
     };
     this.camera = new FirstPersonCamera(0, 0, 10);
     this.pointer_locked = false;
     this.mouse_position;
-  
+
     this.options = {
       toggleShapes: {
         cube: false,
@@ -105,7 +121,7 @@ export class Target_Terminator extends Scene {
       },
       obstacles: false,
       difficulty: 1,
-      sensitivity: 1
+      sensitivity: 1,
     };
     this.animation_queue = [];
     this.spawned_entities = {}; // store all shapes in scene
@@ -216,6 +232,7 @@ export class Target_Terminator extends Scene {
       //periodically push into array
 
       let shape = 0;
+      //GAME HANGS IF ALL OPTIONS ARE OFF, INFINITE WHILE LOOP
       while (true) {
         //generate random shape
         let index = Math.floor(Math.random() * 4); //0-3
@@ -317,35 +334,53 @@ export class Target_Terminator extends Scene {
     let lookAt = this.camera.lookAt;
     let canvas = context.canvas;
     program_state.set_camera(lookAt);
-    
+
     if (!context.scratchpad.controls) {
-      const mouse_position = (e, rect = canvas.getBoundingClientRect()) => vec(
-        (e.clientX - (rect.left + rect.right) / 2) / ((rect.right - rect.left) / 2), 
-        (e.clientY - (rect.bottom + rect.top) / 2) / ((rect.top - rect.bottom) / 2)
-      );
-      
+      const mouse_position = (e, rect = canvas.getBoundingClientRect()) =>
+        vec(
+          (e.clientX - (rect.left + rect.right) / 2) /
+            ((rect.right - rect.left) / 2),
+          (e.clientY - (rect.bottom + rect.top) / 2) /
+            ((rect.top - rect.bottom) / 2)
+        );
+
       // Added pointer lock to the game. https://developer.mozilla.org/en-US/docs/Web/API/Pointer_Lock_API
-      canvas.addEventListener("mousedown", async (e) => {
-        e.preventDefault();
-        if (!canvas.pointerLockedElement){
-          await canvas.requestPointerLock();
-        }
-        canvas.addEventListener("mousemove", (e) => {
-          let del_x = e.movementX;
-          let del_y = e.movementY;
-          if (this.game_state == 1){
-            lookAt = this.camera.update_view(del_x, del_y, this.options.sensitivity);
+      canvas.addEventListener(
+        "mousedown",
+        async (e) => {
+          e.preventDefault();
+          if (!canvas.pointerLockedElement) {
+            await canvas.requestPointerLock();
           }
-        });
-        this.fire_teapot(e, mouse_position(e), context, program_state);
-      }, {once: true});
+          canvas.addEventListener("mousemove", (e) => {
+            let del_x = e.movementX;
+            let del_y = e.movementY;
+            if (this.game_state == 1) {
+              lookAt = this.camera.update_view(
+                del_x,
+                del_y,
+                this.options.sensitivity
+              );
+            }
+          });
+          this.fire_teapot(e, mouse_position(e), context, program_state);
+        },
+        { once: true }
+      );
     }
 
-    program_state.projection_transform = Mat4.perspective(Math.PI / 4, context.width / context.height, 1, 100);
+    program_state.projection_transform = Mat4.perspective(
+      Math.PI / 4,
+      context.width / context.height,
+      1,
+      100
+    );
 
     const light_position = vec4(10, 10, 10, 1);
     program_state.lights = [new Light(light_position, color(1, 1, 1, 1), 1000)];
-    program_state.lights = [new Light(vec4(0,-30,-10,1), hex_color("#FFF2B3"), 1000)];
+    program_state.lights = [
+      new Light(vec4(0, -30, -10, 1), hex_color("#FFF2B3"), 1000),
+    ];
 
     let t = program_state.animation_time;
     if (this.animation_queue.length > 0) {
@@ -377,12 +412,18 @@ export class Target_Terminator extends Scene {
         }
       }
     }
-    
+
     // game state case
     switch (this.game_state) {
       case 0:
         program_state.set_camera(this.camera.default);
-        DisplayMenu(context, program_state, this.options, this.shapes, this.materials);
+        DisplayMenu(
+          context,
+          program_state,
+          this.options,
+          this.shapes,
+          this.materials
+        );
         break;
       case 1:
         this.display_shapes(context, program_state, this.options, t);
@@ -390,8 +431,8 @@ export class Target_Terminator extends Scene {
         break;
       case 2:
         program_state.set_camera(this.camera.default);
-        if (this.pointer_locked){
-          console.log('pointer unlocked');
+        if (this.pointer_locked) {
+          console.log("pointer unlocked");
         }
         break;
       default:
