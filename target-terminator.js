@@ -317,6 +317,7 @@ export class Target_Terminator extends Scene {
   }
 
   target_hit_callback(context, program_state, i) {
+    this.targets_array.splice(i,1)
     console.log("Target " + i + " hit!")
   }
 
@@ -378,6 +379,8 @@ export class Target_Terminator extends Scene {
               let distanceZ = Math.abs(this.targets_array[i].z - position[2]);
               if (distanceX < 2 && distanceY < 2 && distanceZ < 2) {
                 this.target_hit_callback(context, program_state, i)
+                // End ray cast
+                this.animation_queue.shift();
               }
             }
           }
