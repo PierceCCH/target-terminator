@@ -164,7 +164,7 @@ export class Target_Terminator extends Scene {
     });
   }
 
-  fire_teapot(e, pos, context, program_state) {
+  fire_ray(e, pos, context, program_state) {
     let pos_ndc_near = vec4(pos[0], pos[1], -1.0, 1.0);
     let pos_ndc_far = vec4(pos[0], pos[1], 1.0, 1.0);
     let center_ndc_near = vec4(0.0, 0.0, -1.0, 1.0);
@@ -257,6 +257,9 @@ export class Target_Terminator extends Scene {
         //if array is empty or if last element was created more than spawn_freq seconds ago
         let new_target = new Target(x, y, z, t, exposure_time, shape);
         this.targets_array.push(new_target);
+        console.log("Shape" + this.targets_array.length - 1 + " x: " + new_target.x)
+        console.log("Shape" + this.targets_array.length - 1 + " y: " + new_target.y)
+        console.log("Shape" + this.targets_array.length - 1 + " z: " + new_target.z)
       }
     }
     //display all shapes in array
@@ -313,6 +316,11 @@ export class Target_Terminator extends Scene {
     }
   }
 
+  target_hit_callback(context, program_state, i) {
+    this.targets_array.splice(i,1)
+    console.log("Target " + i + " hit!")
+  }
+
   display(context, program_state) {
     let lookAt = this.camera.lookAt;
     let canvas = context.canvas;
@@ -337,7 +345,7 @@ export class Target_Terminator extends Scene {
             lookAt = this.camera.update_view(del_x, del_y, this.options.sensitivity);
           }
         });
-        this.fire_teapot(e, mouse_position(e), context, program_state);
+        this.fire_ray(e, mouse_position(e), context, program_state);
       }, {once: true});
     }
 
@@ -362,18 +370,20 @@ export class Target_Terminator extends Scene {
           let position = to
             .times(animation_process)
             .plus(from.times(1 - animation_process));
-
-          let model_trans = Mat4.translation(
-            position[0],
-            position[1],
-            position[2]
-          ).times(Mat4.rotation(animation_process * 50, 0.3, 0.6, 0.2));
-          this.shapes.teapot.draw(
-            context,
-            program_state,
-            model_trans,
-            this.materials.texture
-          );
+          // Check intersection for targets
+          if (this.game_state == 1) {
+            for (let i = 0; i < this.targets_array.length; i++) {
+              // Calculate distance of cube to ray
+              let distanceX = Math.abs(this.targets_array[i].x - position[0]);
+              let distanceY = Math.abs(this.targets_array[i].y - position[1]);
+              let distanceZ = Math.abs(this.targets_array[i].z - position[2]);
+              if (distanceX < 2 && distanceY < 2 && distanceZ < 2) {
+                this.target_hit_callback(context, program_state, i)
+                // End ray cast
+                this.animation_queue.shift();
+              }
+            }
+          }
         }
       }
     }
