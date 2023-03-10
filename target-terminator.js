@@ -113,27 +113,27 @@ export class Target_Terminator extends Scene {
 
   // TEMPORARY: Control Panel to change shapes, speed, etc.
   make_control_panel() {
-    this.key_triggered_button("Toggle cube", [], () => {
+    this.key_triggered_button("Toggle cube", ["c"], () => {
       this.options.toggleShapes.cube = !this.options.toggleShapes.cube;
     });
     this.new_line();
-    this.key_triggered_button("Toggle sphere", [], () => {
+    this.key_triggered_button("Toggle sphere", ["s"], () => {
       this.options.toggleShapes.sphere = !this.options.toggleShapes.sphere;
     });
     this.new_line();
-    this.key_triggered_button("Toggle donut", [], () => {
+    this.key_triggered_button("Toggle donut", ["d"], () => {
       this.options.toggleShapes.donut = !this.options.toggleShapes.donut;
     });
     this.new_line();
-    this.key_triggered_button("Toggle teapot", [], () => {
+    this.key_triggered_button("Toggle teapot", ["t"], () => {
       this.options.toggleShapes.teapot = !this.options.toggleShapes.teapot;
     });
     this.new_line();
-    this.key_triggered_button("Toggle obstacles", [], () => {
+    this.key_triggered_button("Toggle obstacles", ["o"], () => {
       this.options.obstacles = !this.options.obstacles;
     });
     this.new_line();
-    this.key_triggered_button("Cycle Difficulty", [], () => {
+    this.key_triggered_button("Cycle Difficulty", ["Control", "d"], () => {
       this.options.difficulty += 1;
       if (this.options.difficulty > 3) {
         this.options.difficulty = 1;
@@ -143,7 +143,7 @@ export class Target_Terminator extends Scene {
       box.textContent = "Difficulty: " + this.options.difficulty;
     });
 
-    this.key_triggered_button("Cycle game state", [], () => {
+    this.key_triggered_button("Cycle game state", ["Control", "g"], () => {
       this.game_state += 1;
       if (this.game_state > 2) {
         this.game_state = 0;
@@ -153,7 +153,7 @@ export class Target_Terminator extends Scene {
       box.textContent = "Game State: " + this.game_state;
     });
 
-    this.key_triggered_button("Cycle Sensitivity", [], () => {
+    this.key_triggered_button("Cycle Sensitivity", ["Control", "s"], () => {
       this.options.sensitivity += 1;
       if (this.options.sensitivity > 5) {
         this.options.sensitivity = 1;
