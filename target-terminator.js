@@ -17,8 +17,8 @@ const {
   Scene,
   Texture,
 } = tiny;
-
 const { Textured_Phong, Basic_Shader } = defs;
+
 
 export class Target_Terminator extends Scene {
   constructor() {
@@ -43,11 +43,14 @@ export class Target_Terminator extends Scene {
     const texture = new defs.Textured_Phong(1);
     const phong = new defs.Phong_Shader();
     const scarlet_color = hex_color("#D21404");
+    const green = hex_color("#00FF00");
 
     this.materials = {
       base_target: new Material(phong, { color: scarlet_color }),
+      obstacle: new Material(phong, { color: green }),
       phong: new Material(new Textured_Phong(), {
         color: hex_color("#ffffff"),
+        ambient: 1
       }),
       texture: new Material(new Textured_Phong(), {
         color: hex_color("#ffffff"),
@@ -75,9 +78,9 @@ export class Target_Terminator extends Scene {
       timer_text: new Material(texture, {
         ambient: 0.5,
         texture: new Texture("assets/text.png"),
+        basic: new Material(new Basic_Shader()),
         color: hex_color("#FF0000"),
       }),
-      basic: new Material(new Basic_Shader()),
       mybasic: new Material(new My_Basic_Shader()),
             sky: new Material(new defs.Phong_Shader(), {
                 color: hex_color("#87CEEB"), 
@@ -225,7 +228,7 @@ export class Target_Terminator extends Scene {
     let back_bound = -7;
     let front_bound = 2;
 
-    //periodically push into array
+    // periodically push into array
     if (Math.floor(t) % spawn_freq == 0) {
       //generate random shape
       let shape_index = 0;
@@ -249,22 +252,28 @@ export class Target_Terminator extends Scene {
         let x = Math.random() * right_bound + left_bound;
         let y = Math.random() * top_bound + bottom_bound;
         let z = Math.random() * front_bound + back_bound;
+        let new_target;
 
         // If array is empty, randomly spawn target
         if (this.targets_array.length == 0){
-  
-          let new_target = new Target(x, y, z, t, exposure_time, shape_index);
+          new_target = new Target(x, y, z, t, exposure_time, shape_index);
           this.targets_array.push(new_target);
         }
         // If it's time to spawn a new object, spawn next object close to but not overlapping with last object
         else if (Math.floor(t) - Math.floor(this.targets_array[this.targets_array.length - 1].time_created) >= spawn_freq){
           let last_x = this.targets_array[this.targets_array.length - 1].x;
           let last_y = this.targets_array[this.targets_array.length - 1].y;
-
           x = x - last_x*0.5;
           y = y - last_y*0.5;
+          new_target = new Target(x, y, z, t, exposure_time, shape_index);
 
-          let new_target = new Target(x, y, z, t, exposure_time, shape_index);
+          // Have 20% chance of obstacle spawning given that obstacles are toggled on
+          if (obstacles){
+            let spawn_obstacle = Math.random() * 5;
+            if (Math.floor(spawn_obstacle) == 1){
+              new_target = new Target(x, y, z, t, exposure_time, shape_index, true);
+            }
+          }
           this.targets_array.push(new_target);
         }
       }
@@ -279,33 +288,34 @@ export class Target_Terminator extends Scene {
           this.targets_array[i].z
         )
       );
+      let material = this.targets_array[i].obstacle ? this.materials.obstacle : this.materials.base_target;
       if (this.targets_array[i].shape == "cube") {
         this.shapes.cube.draw(
           context,
           program_state,
           target_pos_transform,
-          this.materials.base_target
+          material
         );
       } else if (this.targets_array[i].shape == "sphere") {
         this.shapes.sphere.draw(
           context,
           program_state,
           target_pos_transform,
-          this.materials.base_target
+          material
         );
       } else if (this.targets_array[i].shape == "donut") {
         this.shapes.donut.draw(
           context,
           program_state,
           target_pos_transform,
-          this.materials.base_target
+          material
         );
       } else if (this.targets_array[i].shape == "teapot") {
         this.shapes.teapot.draw(
           context,
           program_state,
           target_pos_transform,
-          this.materials.base_target
+          material
         );
       }
     }
@@ -316,11 +326,6 @@ export class Target_Terminator extends Scene {
       if (Math.floor(t) - this.targets_array[0].time_created > exposure_time) {
         this.targets_array.shift();
       }
-    }
-
-    if (obstacles) {
-      // Spawn obstacles that block the user, low priority
-      console.log("Obstacles not implemented yet");
     }
   }
 
