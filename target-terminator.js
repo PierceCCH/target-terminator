@@ -1,7 +1,7 @@
 import { defs, tiny } from "./examples/common.js";
 import { Shape_From_File } from "./examples/obj-file-demo.js";
 import { Text_Line } from "./examples/text-demo.js";
-import Target from "./spawn-random-targets.js";
+import Target from "./target.js";
 import FirstPersonCamera from "./first-person-camera.js";
 import DisplayMenu from "./display-menu.js";
 import DisplayBackground from "./display-background.js";
@@ -24,10 +24,10 @@ export class Target_Terminator extends Scene {
   constructor() {
     super();
     this.game_state = 0; // 0 = start, 1 = playing, 2 = end
-    this.round_time = 0; // Timer for each round
+    this.round_time = 999; // Timer for each round
+    this.game_score = 10000000000000;
 
     this.targets_array = []; // Array of targets
-    // each shape should also store some data about its lifetime
     this.shapes = {
         cube: new defs.Cube(),
         sphere: new defs.Subdivision_Sphere(4),
@@ -65,9 +65,17 @@ export class Target_Terminator extends Scene {
       }),
       text_image: new Material(texture, {
         ambient: 1,
-        diffusivity: 0,
-        specularity: 0,
+        texture: new Texture("assets/text.png")
+      }),
+      score_text: new Material(texture, {
+        ambient: 0.5,
         texture: new Texture("assets/text.png"),
+        color: hex_color("#00FF00"),
+      }),
+      timer_text: new Material(texture, {
+        ambient: 0.5,
+        texture: new Texture("assets/text.png"),
+        color: hex_color("#FF0000"),
       }),
       basic: new Material(new Basic_Shader()),
       mybasic: new Material(new My_Basic_Shader()),
@@ -93,7 +101,6 @@ export class Target_Terminator extends Scene {
             }),
     };
     this.camera = new FirstPersonCamera(0, 0, 10);
-    this.pointer_locked = false;
     this.mouse_position;
   
     this.options = {
@@ -108,7 +115,7 @@ export class Target_Terminator extends Scene {
       sensitivity: 1
     };
     this.animation_queue = [];
-    this.spawned_entities = {}; // store all shapes in scene
+    this.setup = false;
   }
 
   // TEMPORARY: Control Panel to change shapes, speed, etc.
@@ -192,6 +199,7 @@ export class Target_Terminator extends Scene {
     const { toggleShapes, obstacles, difficulty } = options; // Destructure options object, difficulty determine how fast objects despawn
     const t = program_state.animation_time / 1000;
     let model_transform = Mat4.identity();
+
     let exposure_time = 0; //How long a target is exposed for bfr disappearing
     let spawn_freq = 0; //How freq a shape is spawned
     switch (difficulty) {
@@ -209,59 +217,59 @@ export class Target_Terminator extends Scene {
         break;
     }
 
-    // Spawn shapes in random positions with random scales
-    model_transform = Mat4.identity();
+    // Spawn Boundaries
+    let left_bound = -10;
+    let right_bound = 20;
+    let bottom_bound = 1;
+    let top_bound = 5;
+    let back_bound = -7;
+    let front_bound = 2;
 
+    //periodically push into array
     if (Math.floor(t) % spawn_freq == 0) {
-      //periodically push into array
-
-      let shape = 0;
-      while (true) {
-        //generate random shape
-        let index = Math.floor(Math.random() * 4); //0-3
-        let shape_index = 0;
-        switch (index) {
-          case 0:
-            shape_index = "cube";
-            break;
-          case 1:
-            shape_index = "sphere";
-            break;
-          case 2:
-            shape_index = "donut";
-            break;
-          case 3:
-            shape_index = "teapot";
-            break;
-        }
-        if (toggleShapes[shape_index] == true) {
-          shape = shape_index;
+      //generate random shape
+      let shape_index = 0;
+      let index = Math.floor(Math.random() * 4);
+      switch (index) {
+        case 0:
+          shape_index = "cube";
           break;
-        }
+        case 1:
+          shape_index = "sphere";
+          break;
+        case 2:
+          shape_index = "donut";
+          break;
+        case 3:
+          shape_index = "teapot";
+          break;
       }
 
-      //Need to check if coordinates are right
-      let x = Math.random() * 10 - 5;
-      let y = Math.random() * 10 - 5;
-      let z = Math.random() * 10 - 5;
+      if (toggleShapes[shape_index] == true) {
+        let x = Math.random() * right_bound + left_bound;
+        let y = Math.random() * top_bound + bottom_bound;
+        let z = Math.random() * front_bound + back_bound;
 
-      if (
-        this.targets_array.length == 0 ||
-        (this.targets_array.length > 0 &&
-          Math.floor(t) -
-            Math.floor(
-              this.targets_array[this.targets_array.length - 1].time_created
-            ) >=
-            spawn_freq)
-      ) {
-        //if array is empty or if last element was created more than spawn_freq seconds ago
-        let new_target = new Target(x, y, z, t, exposure_time, shape);
-        this.targets_array.push(new_target);
-        console.log("Shape" + this.targets_array.length - 1 + " x: " + new_target.x)
-        console.log("Shape" + this.targets_array.length - 1 + " y: " + new_target.y)
-        console.log("Shape" + this.targets_array.length - 1 + " z: " + new_target.z)
+        // If array is empty, randomly spawn target
+        if (this.targets_array.length == 0){
+  
+          let new_target = new Target(x, y, z, t, exposure_time, shape_index);
+          this.targets_array.push(new_target);
+        }
+        // If it's time to spawn a new object, spawn next object close to but not overlapping with last object
+        else if (Math.floor(t) - Math.floor(this.targets_array[this.targets_array.length - 1].time_created) >= spawn_freq){
+          let last_x = this.targets_array[this.targets_array.length - 1].x;
+          let last_y = this.targets_array[this.targets_array.length - 1].y;
+
+          x = x - last_x*0.5;
+          y = y - last_y*0.5;
+
+          let new_target = new Target(x, y, z, t, exposure_time, shape_index);
+          this.targets_array.push(new_target);
+        }
       }
     }
+
     //display all shapes in array
     for (let i = 0; i < this.targets_array.length; i++) {
       let target_pos_transform = model_transform.times(
@@ -316,15 +324,28 @@ export class Target_Terminator extends Scene {
     }
   }
 
-  target_hit_callback(context, program_state, i) {
+  target_hit_callback(i) {
     this.targets_array.splice(i,1)
     console.log("Target " + i + " hit!")
   }
 
+  pointerLockChangeCallback(canvas) {
+    if (document.pointerLockElement === canvas){
+      console.log("enter")
+    } else {
+      console.log("exit")
+    }
+  }
+  
   display(context, program_state) {
     let lookAt = this.camera.lookAt;
     let canvas = context.canvas;
     program_state.set_camera(lookAt);
+
+    if (!this.setup){
+      document.addEventListener("pointerlockchange", this.pointerLockChangeCallback(canvas), false);
+      this.setup = true;
+    }
     
     if (!context.scratchpad.controls) {
       const mouse_position = (e, rect = canvas.getBoundingClientRect()) => vec(
@@ -335,15 +356,14 @@ export class Target_Terminator extends Scene {
       // Added pointer lock to the game. https://developer.mozilla.org/en-US/docs/Web/API/Pointer_Lock_API
       canvas.addEventListener("mousedown", async (e) => {
         e.preventDefault();
-        if (!canvas.pointerLockedElement){
-          this.pointer_locked = true;
+        if (!document.pointerLockElement && this.game_state == 1){
           await canvas.requestPointerLock();
         }
         canvas.addEventListener("mousemove", (e) => {
           let del_x = e.movementX;
           let del_y = e.movementY;
           if (this.game_state == 1){
-            lookAt = this.camera.update_view(del_x, del_y, this.options.sensitivity);
+            this.camera.update_view(del_x, del_y, this.options.sensitivity);
           }
         });
         this.fire_ray(e, mouse_position(e), context, program_state);
@@ -379,7 +399,7 @@ export class Target_Terminator extends Scene {
               let distanceY = Math.abs(this.targets_array[i].y - position[1]);
               let distanceZ = Math.abs(this.targets_array[i].z - position[2]);
               if (distanceX < 2 && distanceY < 2 && distanceZ < 2) {
-                this.target_hit_callback(context, program_state, i)
+                this.target_hit_callback(i)
                 // End ray cast
                 this.animation_queue.shift();
               }
@@ -398,13 +418,13 @@ export class Target_Terminator extends Scene {
       case 1:
         this.display_shapes(context, program_state, this.options, t);
         DisplayBackground(context, program_state, this.shapes, this.materials);
+        this.camera.draw_ui(context, program_state, this.shapes, this.materials, this.game_score, this.round_time);
         break;
       case 2:
         program_state.set_camera(this.camera.default);
-        if (this.pointer_locked){
+        if (document.pointerLockedElement === canvas){
           console.log('pointer unlocked');
-          this.pointer_locked = false;
-          canvas.exitPointerLock();
+          document.exitPointerLock();
         }
         break;
       default:

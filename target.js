@@ -6,6 +6,5 @@ export default class Target {
         this.time_created=time_created;
         this.exposure_time=exposure_time;
         this.shape = shape;
-        console.log("created new target");
     }
 }
