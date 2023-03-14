@@ -24,8 +24,8 @@ export class Target_Terminator extends Scene {
   constructor() {
     super();
     this.game_state = 0; // 0 = start, 1 = playing, 2 = end
-    this.round_time = 999; // Timer for each round
-    this.game_score = 10000000000000;
+    this.game_score = 0;
+    this.round_time = 60; // Timer for each round
 
     this.targets_array = []; // Array of targets
     this.shapes = {
@@ -104,7 +104,6 @@ export class Target_Terminator extends Scene {
             }),
     };
     this.camera = new FirstPersonCamera(0, 0, 10);
-    this.mouse_position;
   
     this.options = {
       toggleShapes: {
@@ -118,7 +117,6 @@ export class Target_Terminator extends Scene {
       sensitivity: 1
     };
     this.animation_queue = [];
-    this.setup = false;
   }
 
   // TEMPORARY: Control Panel to change shapes, speed, etc.
@@ -330,8 +328,21 @@ export class Target_Terminator extends Scene {
   }
 
   target_hit_callback(i) {
+    let target = this.targets_array[i];
+    if (target.obstacle){
+      this.game_score -= 10;
+    } else {
+      this.game_score += 10;
+    }
     this.targets_array.splice(i,1)
     console.log("Target " + i + " hit!")
+  }
+
+  timer_countdown() {
+    this.game_timer -= 1;
+    if (this.game_timer == 0) {
+      this.game_state = 2;
+    }
   }
 
   pointerLockChangeCallback(canvas) {
@@ -346,11 +357,6 @@ export class Target_Terminator extends Scene {
     let lookAt = this.camera.lookAt;
     let canvas = context.canvas;
     program_state.set_camera(lookAt);
-
-    if (!this.setup){
-      document.addEventListener("pointerlockchange", this.pointerLockChangeCallback(canvas), false);
-      this.setup = true;
-    }
     
     if (!context.scratchpad.controls) {
       const mouse_position = (e, rect = canvas.getBoundingClientRect()) => vec(
@@ -382,6 +388,11 @@ export class Target_Terminator extends Scene {
     program_state.lights = [new Light(vec4(0,-30,-10,1), hex_color("#FFF2B3"), 1000)];
 
     let t = program_state.animation_time;
+
+    // if (t  == 0) {
+    //   timer_countdown();
+    // }
+
     if (this.animation_queue.length > 0) {
       for (let i = 0; i < this.animation_queue.length; i++) {
         let animation_bullet = this.animation_queue[i];
