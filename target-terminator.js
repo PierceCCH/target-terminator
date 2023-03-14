@@ -5,6 +5,7 @@ import Target from "./spawn-random-targets.js";
 import FirstPersonCamera from "./first-person-camera.js";
 import DisplayMenu from "./display-menu.js";
 import DisplayBackground from "./display-background.js";
+import DisplayGameEnd from "./display-game-end.js";
 
 const { vec, vec4, color, hex_color, Mat4, Light, Material, Scene, Texture } =
   tiny;
@@ -125,6 +126,7 @@ export class Target_Terminator extends Scene {
     };
     this.animation_queue = [];
     this.spawned_entities = {}; // store all shapes in scene
+    this.score = 999;
   }
 
   // TEMPORARY: Control Panel to change shapes, speed, etc.
@@ -434,6 +436,13 @@ export class Target_Terminator extends Scene {
         if (this.pointer_locked) {
           console.log("pointer unlocked");
         }
+        DisplayGameEnd(
+          context,
+          program_state,
+          this.shapes,
+          this.materials,
+          this.score
+        );
         break;
       default:
         break;
