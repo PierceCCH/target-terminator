@@ -18,6 +18,9 @@ export class Target_Terminator extends Scene {
     this.game_state = 0; // 0 = start, 1 = playing, 2 = end
     this.game_score = 0;
     this.round_time = 60; // Timer for each round
+    this.time_start = 0;
+    this.first_render = true;
+    this.time_counter = 1;
 
     this.targets_array = []; // Array of targets
     this.shapes = {
@@ -79,6 +82,7 @@ export class Target_Terminator extends Scene {
       timer_text: new Material(texture, {
         ambient: 0.5,
         texture: new Texture("assets/text.png"),
+        color: hex_color("#FF0000"),
       }),
       header_text_image: new Material(texture, {
         color: hex_color("#424949"),
@@ -121,8 +125,8 @@ export class Target_Terminator extends Scene {
         specularity: 0,
       }),
     };
+
     this.camera = new FirstPersonCamera(0, 0, 10);
-  
     this.options = {
       toggleShapes: {
         cube: false,
@@ -190,7 +194,7 @@ export class Target_Terminator extends Scene {
     });
   }
 
-  fire_ray(e, pos, context, program_state) {
+  fire_ray(pos, program_state) {
     let pos_ndc_near = vec4(pos[0], pos[1], -1.0, 1.0);
     let pos_ndc_far = vec4(pos[0], pos[1], 1.0, 1.0);
     let center_ndc_near = vec4(0.0, 0.0, -1.0, 1.0);
@@ -357,9 +361,12 @@ export class Target_Terminator extends Scene {
   }
 
   timer_countdown() {
-    this.game_timer -= 1;
-    if (this.game_timer == 0) {
+    this.round_time--;
+    if (this.round_time == 0) {
       this.game_state = 2;
+      this.time_counter = 1;
+      this.first_render = true;
+      this.time_start = 0;
     }
   }
 
@@ -398,7 +405,7 @@ export class Target_Terminator extends Scene {
             this.camera.update_view(del_x, del_y, this.options.sensitivity);
           }
         });
-        this.fire_ray(e, mouse_position(e), context, program_state);
+        this.fire_ray(mouse_position(e), program_state);
       }, {once: true});
     }
 
@@ -416,10 +423,6 @@ export class Target_Terminator extends Scene {
     ];
 
     let t = program_state.animation_time;
-
-    // if (t  == 0) {
-    //   timer_countdown();
-    // }
 
     if (this.animation_queue.length > 0) {
       for (let i = 0; i < this.animation_queue.length; i++) {
@@ -467,6 +470,15 @@ export class Target_Terminator extends Scene {
         break;
       case 1:
         this.display_shapes(context, program_state, this.options, t);
+        if (this.first_render){
+          this.first_render = false;
+          this.time_start = Date.now();
+        }
+        let current_time = Date.now();
+        if (Math.floor((current_time - this.time_start) / 1000) == this.time_counter) {
+          this.timer_countdown();
+          this.time_counter++;
+        }
         DisplayBackground(context, program_state, this.shapes, this.materials);
         this.camera.draw_ui(context, program_state, this.shapes, this.materials, this.game_score, this.round_time);
         break;
@@ -481,7 +493,7 @@ export class Target_Terminator extends Scene {
           program_state,
           this.shapes,
           this.materials,
-          this.score
+          this.game_score
         );
         break;
       default:

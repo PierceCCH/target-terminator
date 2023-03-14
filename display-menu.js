@@ -12,6 +12,7 @@ export default function DisplayMenu(
 ) {
   const toggleShapes = options.toggleShapes;
   const sensitivity = options.sensitivity;
+  const obstacles = options.obstacles
 
   // Background
   let background_transform = Mat4.identity();
@@ -56,10 +57,15 @@ export default function DisplayMenu(
     materials.header_text_image
   );
 
+  const cube_side = Mat4.rotation(0, 1, 0, 0)
+                        .times(Mat4.rotation(0, 0, 1, 0))
+                        .times(Mat4.scale(0.8, 0.8, 1))
+                        .times(Mat4.translation(-1.2, 0.9, 1.01));
+
   // Play Button
   let play_button_transform = Mat4.identity();
   play_button_transform = play_button_transform
-    .times(Mat4.translation(-3, -2, 0))
+    .times(Mat4.translation(-3, -0.75, 0))
     .times(Mat4.scale(2, 0.7, 0.2))
     .times(Mat4.rotation(0.15, 0, 1, 0));
   shapes.cube.draw(
@@ -68,10 +74,6 @@ export default function DisplayMenu(
     play_button_transform,
     materials.menu_button
   );
-  const cube_side = Mat4.rotation(0, 1, 0, 0)
-    .times(Mat4.rotation(0, 0, 1, 0))
-    .times(Mat4.scale(0.8, 0.8, 1))
-    .times(Mat4.translation(-1.2, 0.9, 1.01));
   let string = "PLAY";
   // Draw a Text_String for every line in our string, up to 30 lines:
   shapes.text.set_string(string, context.context);
@@ -82,6 +84,38 @@ export default function DisplayMenu(
       .times(cube_side)
       .times(Mat4.translation(0.4, -0.9, 0))
       .times(Mat4.scale(0.2, 0.4, 0)),
+    materials.text_image
+  );
+
+  // Cycle Difficulty button
+  let difficulty_button_transform = play_button_transform;
+  difficulty_button_transform = difficulty_button_transform.times(
+    Mat4.translation(0, -2.5, 0)
+  );
+  shapes.cube.draw(
+    context,
+    program_state,
+    difficulty_button_transform,
+    materials.menu_button
+  );
+  let difficulty = "Easy";
+  switch (options.difficulty) {
+    case 1:
+      difficulty = "Easy";
+      break;
+    case 2:
+      difficulty = "Medium";
+      break;
+    case 3:
+      difficulty = "Hard";
+      break;
+  }
+  string = difficulty;
+  shapes.text.set_string(string, context.context);
+  shapes.text.draw(
+    context,
+    program_state,
+    difficulty_button_transform.times(cube_side).times(option_text_transform),
     materials.text_image
   );
 
@@ -166,40 +200,8 @@ export default function DisplayMenu(
     materials.text_image
   );
 
-  // Cycle Difficulty button
-  let difficulty_button_transform = teapot_button_transform;
-  difficulty_button_transform = difficulty_button_transform.times(
-    Mat4.translation(0, -2.5, 0)
-  );
-  shapes.cube.draw(
-    context,
-    program_state,
-    difficulty_button_transform,
-    materials.menu_button
-  );
-  let difficulty = "Easy";
-  switch (options.difficulty) {
-    case 1:
-      difficulty = "Easy";
-      break;
-    case 2:
-      difficulty = "Medium";
-      break;
-    case 3:
-      difficulty = "Hard";
-      break;
-  }
-  string = difficulty;
-  shapes.text.set_string(string, context.context);
-  shapes.text.draw(
-    context,
-    program_state,
-    difficulty_button_transform.times(cube_side).times(option_text_transform),
-    materials.text_image
-  );
-
   // Cycle sensitivity button
-  let sensitivity_button_transform = difficulty_button_transform;
+  let sensitivity_button_transform = teapot_button_transform;
   sensitivity_button_transform = sensitivity_button_transform.times(
     Mat4.translation(0, -2.5, 0)
   );
@@ -217,4 +219,24 @@ export default function DisplayMenu(
     sensitivity_button_transform.times(cube_side).times(option_text_transform),
     materials.text_image
   );
+
+    // Toggle obstacles button
+    let obstacles_button_transform = sensitivity_button_transform;
+    obstacles_button_transform = obstacles_button_transform.times(
+      Mat4.translation(0, -2.5, 0)
+    );
+    shapes.cube.draw(
+      context,
+      program_state,
+      obstacles_button_transform,
+      materials.menu_button
+    );
+    string = "Obstacles: " + (obstacles ? "on" : "off");
+    shapes.text.set_string(string, context.context);
+    shapes.text.draw(
+      context,
+      program_state,
+      obstacles_button_transform.times(cube_side).times(option_text_transform),
+      materials.text_image
+    );
 }
