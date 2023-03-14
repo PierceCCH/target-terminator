@@ -1,9 +1,15 @@
 // Displayed the main menu screen for game state 0
 
 import { tiny } from "./examples/common.js";
-const {Mat4} = tiny
+const { Mat4 } = tiny;
 
-export default function DisplayMenu (context, program_state, options, shapes, materials) {
+export default function DisplayMenu(
+  context,
+  program_state,
+  options,
+  shapes,
+  materials
+) {
   const toggleShapes = options.toggleShapes;
   const sensitivity = options.sensitivity;
 
@@ -16,7 +22,7 @@ export default function DisplayMenu (context, program_state, options, shapes, ma
     context,
     program_state,
     background_transform,
-    materials.texture
+    materials.menu_background
   );
 
   // Standard for all option texts
@@ -25,10 +31,35 @@ export default function DisplayMenu (context, program_state, options, shapes, ma
     .times(Mat4.translation(0.1, -0.9, 0))
     .times(Mat4.scale(0.12, 0.5, 0));
 
+  //TARGET TERMINATOR header
+  let header1 = "TARGET";
+  let header1_transform = Mat4.identity()
+    .times(Mat4.translation(-5, 2, 0))
+    .times(Mat4.scale(0.5, 0.5, 0));
+  shapes.text.set_string(header1, context.context);
+  shapes.text.draw(
+    context,
+    program_state,
+    header1_transform,
+    materials.header_text_image
+  );
+
+  let header2 = "TERMINATOR";
+  let header2_transform = header1_transform.times(
+    Mat4.translation(-2, -2.5, 0)
+  );
+  shapes.text.set_string(header2, context.context);
+  shapes.text.draw(
+    context,
+    program_state,
+    header2_transform,
+    materials.header_text_image
+  );
+
   // Play Button
   let play_button_transform = Mat4.identity();
   play_button_transform = play_button_transform
-    .times(Mat4.translation(-3, 0, 0))
+    .times(Mat4.translation(-3, -2, 0))
     .times(Mat4.scale(2, 0.7, 0.2))
     .times(Mat4.rotation(0.15, 0, 1, 0));
   shapes.cube.draw(
@@ -39,7 +70,8 @@ export default function DisplayMenu (context, program_state, options, shapes, ma
   );
   const cube_side = Mat4.rotation(0, 1, 0, 0)
     .times(Mat4.rotation(0, 0, 1, 0))
-    .times(Mat4.translation(-0.9, 0.9, 1.01));
+    .times(Mat4.scale(0.8, 0.8, 1))
+    .times(Mat4.translation(-1.2, 0.9, 1.01));
   let string = "PLAY";
   // Draw a Text_String for every line in our string, up to 30 lines:
   shapes.text.set_string(string, context.context);
@@ -56,7 +88,7 @@ export default function DisplayMenu (context, program_state, options, shapes, ma
   // Toggle Cube button
   let cube_button_transform = Mat4.identity();
   cube_button_transform = cube_button_transform
-    .times(Mat4.translation(4, 3, 0))
+    .times(Mat4.translation(4, 3.5, 0))
     .times(Mat4.scale(1.7, 0.5, 0.2))
     .times(Mat4.rotation(-0.15, -1, 1, 0));
   shapes.cube.draw(
@@ -77,7 +109,7 @@ export default function DisplayMenu (context, program_state, options, shapes, ma
   // Toggle Sphere button
   let sphere_button_transform = cube_button_transform;
   sphere_button_transform = sphere_button_transform.times(
-    Mat4.translation(0, -3, 0)
+    Mat4.translation(0, -2.5, 0)
   );
   shapes.cube.draw(
     context,
@@ -97,7 +129,7 @@ export default function DisplayMenu (context, program_state, options, shapes, ma
   // Toggle Donut button
   let donut_button_transform = sphere_button_transform;
   donut_button_transform = donut_button_transform.times(
-    Mat4.translation(0, -3, 0)
+    Mat4.translation(0, -2.5, 0)
   );
   shapes.cube.draw(
     context,
@@ -117,7 +149,7 @@ export default function DisplayMenu (context, program_state, options, shapes, ma
   // Toggle Teapot button
   let teapot_button_transform = donut_button_transform;
   teapot_button_transform = teapot_button_transform.times(
-    Mat4.translation(0, -3, 0)
+    Mat4.translation(0, -2.5, 0)
   );
   shapes.cube.draw(
     context,
@@ -137,7 +169,7 @@ export default function DisplayMenu (context, program_state, options, shapes, ma
   // Cycle Difficulty button
   let difficulty_button_transform = teapot_button_transform;
   difficulty_button_transform = difficulty_button_transform.times(
-    Mat4.translation(0, -3, 0)
+    Mat4.translation(0, -2.5, 0)
   );
   shapes.cube.draw(
     context,
@@ -169,7 +201,7 @@ export default function DisplayMenu (context, program_state, options, shapes, ma
   // Cycle sensitivity button
   let sensitivity_button_transform = difficulty_button_transform;
   sensitivity_button_transform = sensitivity_button_transform.times(
-    Mat4.translation(0, -3, 0)
+    Mat4.translation(0, -2.5, 0)
   );
   shapes.cube.draw(
     context,
@@ -182,9 +214,7 @@ export default function DisplayMenu (context, program_state, options, shapes, ma
   shapes.text.draw(
     context,
     program_state,
-    sensitivity_button_transform
-      .times(cube_side)
-      .times(option_text_transform),
+    sensitivity_button_transform.times(cube_side).times(option_text_transform),
     materials.text_image
   );
 }

@@ -5,18 +5,10 @@ import Target from "./target.js";
 import FirstPersonCamera from "./first-person-camera.js";
 import DisplayMenu from "./display-menu.js";
 import DisplayBackground from "./display-background.js";
+import DisplayGameEnd from "./display-game-end.js";
 
-const {
-  vec,
-  vec4,
-  color,
-  hex_color,
-  Mat4,
-  Light,
-  Material,
-  Scene,
-  Texture,
-} = tiny;
+const { vec, vec4, color, hex_color, Mat4, Light, Material, Scene, Texture } = tiny;
+
 const { Textured_Phong, Basic_Shader } = defs;
 
 
@@ -29,16 +21,18 @@ export class Target_Terminator extends Scene {
 
     this.targets_array = []; // Array of targets
     this.shapes = {
-        cube: new defs.Cube(),
-        sphere: new defs.Subdivision_Sphere(4),
-        donut: new defs.Torus(15, 15),
-        teapot: new Shape_From_File("./assets/teapot.obj"),
-        text: new Text_Line(35),
-        desert_plane: new Shape_From_File("./assets/desert_plane.obj"),
-        rock: new (defs.Subdivision_Sphere.prototype.make_flat_shaded_version())(2),
-        cactus: new Shape_From_File("./assets/cactus.obj"),
-        blocky_cactus: new Shape_From_File("./assets/blocky_cactus.obj"),
-    }
+      cube: new defs.Cube(),
+      sphere: new defs.Subdivision_Sphere(4),
+      donut: new defs.Torus(15, 15),
+      teapot: new Shape_From_File("./assets/teapot.obj"),
+      text: new Text_Line(35),
+      desert_plane: new Shape_From_File("./assets/desert_plane.obj"),
+      rock: new (defs.Subdivision_Sphere.prototype.make_flat_shaded_version())(
+        2
+      ),
+      cactus: new Shape_From_File("./assets/cactus.obj"),
+      blocky_cactus: new Shape_From_File("./assets/blocky_cactus.obj"),
+    };
 
     const texture = new defs.Textured_Phong(1);
     const phong = new defs.Phong_Shader();
@@ -59,9 +53,16 @@ export class Target_Terminator extends Scene {
         specularity: 0.1,
         texture: new Texture("assets/stars.png"),
       }),
-      menu_button: new Material(phong, {
-        color: hex_color("#00ffff"),
+      menu_background: new Material(new Textured_Phong(), {
+        color: hex_color("#F5CBA7"),
         ambient: 0.5,
+        diffusivity: 0.1,
+        specularity: 0.1,
+        texture: new Texture("assets/sand_dunes.jpg"),
+      }),
+      menu_button: new Material(phong, {
+        color: hex_color("#DC7633"),
+        ambient: 1,
         diffusivity: 0.3,
         specularity: 0.2,
         smoothness: 30,
@@ -78,30 +79,47 @@ export class Target_Terminator extends Scene {
       timer_text: new Material(texture, {
         ambient: 0.5,
         texture: new Texture("assets/text.png"),
-        basic: new Material(new Basic_Shader()),
+      }),
+      header_text_image: new Material(texture, {
+        color: hex_color("#424949"),
+        ambient: 0.2,
+        diffusivity: 0,
+        specularity: 0,
+        texture: new Texture("assets/text.png"),
+      }),
+      basic: new Material(new Basic_Shader(), {
         color: hex_color("#FF0000"),
       }),
       mybasic: new Material(new My_Basic_Shader()),
-            sky: new Material(new defs.Phong_Shader(), {
-                color: hex_color("#87CEEB"), 
-                ambient: 1, diffusivity: 0, specularity: 0,
-            }),
-            ground: new Material(new defs.Phong_Shader(), {
-                color: hex_color("#C2B280"),
-                ambient: 0.6, diffusivity: 1, specularity: 1,
-            }),
-            sun: new Material(new defs.Phong_Shader(), {
-                color: hex_color("#FFE87C"),
-                ambient: 1, specularity: 0,
-            }),
-            rock: new Material(new defs.Phong_Shader(), {
-                color: hex_color("#808080"),
-                ambient: 0.6, diffusivity: 1, specularity: 0,
-            }),
-            cactus: new Material(new defs.Phong_Shader(), {
-                color: hex_color("#5C755E"),
-                ambient: 1, diffusivity: 0, specularity: 0,
-            }),
+      sky: new Material(new defs.Phong_Shader(), {
+        color: hex_color("#87CEEB"),
+        ambient: 1,
+        diffusivity: 0,
+        specularity: 0,
+      }),
+      ground: new Material(new defs.Phong_Shader(), {
+        color: hex_color("#C2B280"),
+        ambient: 0.6,
+        diffusivity: 1,
+        specularity: 1,
+      }),
+      sun: new Material(new defs.Phong_Shader(), {
+        color: hex_color("#FFE87C"),
+        ambient: 1,
+        specularity: 0,
+      }),
+      rock: new Material(new defs.Phong_Shader(), {
+        color: hex_color("#808080"),
+        ambient: 0.6,
+        diffusivity: 1,
+        specularity: 0,
+      }),
+      cactus: new Material(new defs.Phong_Shader(), {
+        color: hex_color("#5C755E"),
+        ambient: 1,
+        diffusivity: 0,
+        specularity: 0,
+      }),
     };
     this.camera = new FirstPersonCamera(0, 0, 10);
   
@@ -114,7 +132,7 @@ export class Target_Terminator extends Scene {
       },
       obstacles: false,
       difficulty: 1,
-      sensitivity: 1
+      sensitivity: 1,
     };
     this.animation_queue = [];
   }
@@ -359,11 +377,14 @@ export class Target_Terminator extends Scene {
     program_state.set_camera(lookAt);
     
     if (!context.scratchpad.controls) {
-      const mouse_position = (e, rect = canvas.getBoundingClientRect()) => vec(
-        (e.clientX - (rect.left + rect.right) / 2) / ((rect.right - rect.left) / 2), 
-        (e.clientY - (rect.bottom + rect.top) / 2) / ((rect.top - rect.bottom) / 2)
-      );
-      
+      const mouse_position = (e, rect = canvas.getBoundingClientRect()) =>
+        vec(
+          (e.clientX - (rect.left + rect.right) / 2) /
+            ((rect.right - rect.left) / 2),
+          (e.clientY - (rect.bottom + rect.top) / 2) /
+            ((rect.top - rect.bottom) / 2)
+        );
+
       // Added pointer lock to the game. https://developer.mozilla.org/en-US/docs/Web/API/Pointer_Lock_API
       canvas.addEventListener("mousedown", async (e) => {
         e.preventDefault();
@@ -381,11 +402,18 @@ export class Target_Terminator extends Scene {
       }, {once: true});
     }
 
-    program_state.projection_transform = Mat4.perspective(Math.PI / 4, context.width / context.height, 1, 100);
+    program_state.projection_transform = Mat4.perspective(
+      Math.PI / 4,
+      context.width / context.height,
+      1,
+      100
+    );
 
     const light_position = vec4(10, 10, 10, 1);
     program_state.lights = [new Light(light_position, color(1, 1, 1, 1), 1000)];
-    program_state.lights = [new Light(vec4(0,-30,-10,1), hex_color("#FFF2B3"), 1000)];
+    program_state.lights = [
+      new Light(vec4(0, -30, -10, 1), hex_color("#FFF2B3"), 1000),
+    ];
 
     let t = program_state.animation_time;
 
@@ -424,12 +452,18 @@ export class Target_Terminator extends Scene {
         }
       }
     }
-    
+
     // game state case
     switch (this.game_state) {
       case 0:
         program_state.set_camera(this.camera.default);
-        DisplayMenu(context, program_state, this.options, this.shapes, this.materials);
+        DisplayMenu(
+          context,
+          program_state,
+          this.options,
+          this.shapes,
+          this.materials
+        );
         break;
       case 1:
         this.display_shapes(context, program_state, this.options, t);
@@ -442,6 +476,13 @@ export class Target_Terminator extends Scene {
           console.log('pointer unlocked');
           document.exitPointerLock();
         }
+        DisplayGameEnd(
+          context,
+          program_state,
+          this.shapes,
+          this.materials,
+          this.score
+        );
         break;
       default:
         break;
