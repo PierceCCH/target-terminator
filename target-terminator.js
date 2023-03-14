@@ -1,25 +1,25 @@
 import { defs, tiny } from "./examples/common.js";
 import { Shape_From_File } from "./examples/obj-file-demo.js";
 import { Text_Line } from "./examples/text-demo.js";
-import Target from "./spawn-random-targets.js";
+import Target from "./target.js";
 import FirstPersonCamera from "./first-person-camera.js";
 import DisplayMenu from "./display-menu.js";
 import DisplayBackground from "./display-background.js";
 import DisplayGameEnd from "./display-game-end.js";
 
-const { vec, vec4, color, hex_color, Mat4, Light, Material, Scene, Texture } =
-  tiny;
+const { vec, vec4, color, hex_color, Mat4, Light, Material, Scene, Texture } = tiny;
 
 const { Textured_Phong, Basic_Shader } = defs;
+
 
 export class Target_Terminator extends Scene {
   constructor() {
     super();
     this.game_state = 0; // 0 = start, 1 = playing, 2 = end
-    this.round_time = 0; // Timer for each round
+    this.round_time = 999; // Timer for each round
+    this.game_score = 10000000000000;
 
     this.targets_array = []; // Array of targets
-    // each shape should also store some data about its lifetime
     this.shapes = {
       cube: new defs.Cube(),
       sphere: new defs.Subdivision_Sphere(4),
@@ -37,11 +37,14 @@ export class Target_Terminator extends Scene {
     const texture = new defs.Textured_Phong(1);
     const phong = new defs.Phong_Shader();
     const scarlet_color = hex_color("#D21404");
+    const green = hex_color("#00FF00");
 
     this.materials = {
       base_target: new Material(phong, { color: scarlet_color }),
+      obstacle: new Material(phong, { color: green }),
       phong: new Material(new Textured_Phong(), {
         color: hex_color("#ffffff"),
+        ambient: 1
       }),
       texture: new Material(new Textured_Phong(), {
         color: hex_color("#ffffff"),
@@ -66,8 +69,15 @@ export class Target_Terminator extends Scene {
       }),
       text_image: new Material(texture, {
         ambient: 1,
-        diffusivity: 0,
-        specularity: 0,
+        texture: new Texture("assets/text.png")
+      }),
+      score_text: new Material(texture, {
+        ambient: 0.5,
+        texture: new Texture("assets/text.png"),
+        color: hex_color("#00FF00"),
+      }),
+      timer_text: new Material(texture, {
+        ambient: 0.5,
         texture: new Texture("assets/text.png"),
       }),
       header_text_image: new Material(texture, {
@@ -77,7 +87,9 @@ export class Target_Terminator extends Scene {
         specularity: 0,
         texture: new Texture("assets/text.png"),
       }),
-      basic: new Material(new Basic_Shader()),
+      basic: new Material(new Basic_Shader(), {
+        color: hex_color("#FF0000"),
+      }),
       mybasic: new Material(new My_Basic_Shader()),
       sky: new Material(new defs.Phong_Shader(), {
         color: hex_color("#87CEEB"),
@@ -110,7 +122,6 @@ export class Target_Terminator extends Scene {
       }),
     };
     this.camera = new FirstPersonCamera(0, 0, 10);
-    this.pointer_locked = false;
     this.mouse_position;
 
     this.options = {
@@ -131,27 +142,27 @@ export class Target_Terminator extends Scene {
 
   // TEMPORARY: Control Panel to change shapes, speed, etc.
   make_control_panel() {
-    this.key_triggered_button("Toggle cube", [], () => {
+    this.key_triggered_button("Toggle cube", ["c"], () => {
       this.options.toggleShapes.cube = !this.options.toggleShapes.cube;
     });
     this.new_line();
-    this.key_triggered_button("Toggle sphere", [], () => {
+    this.key_triggered_button("Toggle sphere", ["s"], () => {
       this.options.toggleShapes.sphere = !this.options.toggleShapes.sphere;
     });
     this.new_line();
-    this.key_triggered_button("Toggle donut", [], () => {
+    this.key_triggered_button("Toggle donut", ["d"], () => {
       this.options.toggleShapes.donut = !this.options.toggleShapes.donut;
     });
     this.new_line();
-    this.key_triggered_button("Toggle teapot", [], () => {
+    this.key_triggered_button("Toggle teapot", ["t"], () => {
       this.options.toggleShapes.teapot = !this.options.toggleShapes.teapot;
     });
     this.new_line();
-    this.key_triggered_button("Toggle obstacles", [], () => {
+    this.key_triggered_button("Toggle obstacles", ["o"], () => {
       this.options.obstacles = !this.options.obstacles;
     });
     this.new_line();
-    this.key_triggered_button("Cycle Difficulty", [], () => {
+    this.key_triggered_button("Cycle Difficulty", ["Control", "d"], () => {
       this.options.difficulty += 1;
       if (this.options.difficulty > 3) {
         this.options.difficulty = 1;
@@ -161,7 +172,7 @@ export class Target_Terminator extends Scene {
       box.textContent = "Difficulty: " + this.options.difficulty;
     });
 
-    this.key_triggered_button("Cycle game state", [], () => {
+    this.key_triggered_button("Cycle game state", ["Control", "g"], () => {
       this.game_state += 1;
       if (this.game_state > 2) {
         this.game_state = 0;
@@ -171,7 +182,7 @@ export class Target_Terminator extends Scene {
       box.textContent = "Game State: " + this.game_state;
     });
 
-    this.key_triggered_button("Cycle Sensitivity", [], () => {
+    this.key_triggered_button("Cycle Sensitivity", ["Control", "s"], () => {
       this.options.sensitivity += 1;
       if (this.options.sensitivity > 5) {
         this.options.sensitivity = 1;
@@ -182,7 +193,7 @@ export class Target_Terminator extends Scene {
     });
   }
 
-  fire_teapot(e, pos, context, program_state) {
+  fire_ray(e, pos, context, program_state) {
     let pos_ndc_near = vec4(pos[0], pos[1], -1.0, 1.0);
     let pos_ndc_far = vec4(pos[0], pos[1], 1.0, 1.0);
     let center_ndc_near = vec4(0.0, 0.0, -1.0, 1.0);
@@ -210,6 +221,7 @@ export class Target_Terminator extends Scene {
     const { toggleShapes, obstacles, difficulty } = options; // Destructure options object, difficulty determine how fast objects despawn
     const t = program_state.animation_time / 1000;
     let model_transform = Mat4.identity();
+
     let exposure_time = 0; //How long a target is exposed for bfr disappearing
     let spawn_freq = 0; //How freq a shape is spawned
     switch (difficulty) {
@@ -227,57 +239,65 @@ export class Target_Terminator extends Scene {
         break;
     }
 
-    // Spawn shapes in random positions with random scales
-    model_transform = Mat4.identity();
+    // Spawn Boundaries
+    let left_bound = -10;
+    let right_bound = 20;
+    let bottom_bound = 1;
+    let top_bound = 5;
+    let back_bound = -7;
+    let front_bound = 2;
 
+    // periodically push into array
     if (Math.floor(t) % spawn_freq == 0) {
-      //periodically push into array
-
-      let shape = 0;
-      //GAME HANGS IF ALL OPTIONS ARE OFF, INFINITE WHILE LOOP
-      while (true) {
-        //generate random shape
-        let index = Math.floor(Math.random() * 4); //0-3
-        let shape_index = 0;
-        switch (index) {
-          case 0:
-            shape_index = "cube";
-            break;
-          case 1:
-            shape_index = "sphere";
-            break;
-          case 2:
-            shape_index = "donut";
-            break;
-          case 3:
-            shape_index = "teapot";
-            break;
-        }
-        if (toggleShapes[shape_index] == true) {
-          shape = shape_index;
+      //generate random shape
+      let shape_index = 0;
+      let index = Math.floor(Math.random() * 4);
+      switch (index) {
+        case 0:
+          shape_index = "cube";
           break;
-        }
+        case 1:
+          shape_index = "sphere";
+          break;
+        case 2:
+          shape_index = "donut";
+          break;
+        case 3:
+          shape_index = "teapot";
+          break;
       }
 
-      //Need to check if coordinates are right
-      let x = Math.random() * 10 - 5;
-      let y = Math.random() * 10 - 5;
-      let z = Math.random() * 10 - 5;
+      if (toggleShapes[shape_index] == true) {
+        let x = Math.random() * right_bound + left_bound;
+        let y = Math.random() * top_bound + bottom_bound;
+        let z = Math.random() * front_bound + back_bound;
+        let new_target;
 
-      if (
-        this.targets_array.length == 0 ||
-        (this.targets_array.length > 0 &&
-          Math.floor(t) -
-            Math.floor(
-              this.targets_array[this.targets_array.length - 1].time_created
-            ) >=
-            spawn_freq)
-      ) {
-        //if array is empty or if last element was created more than spawn_freq seconds ago
-        let new_target = new Target(x, y, z, t, exposure_time, shape);
-        this.targets_array.push(new_target);
+        // If array is empty, randomly spawn target
+        if (this.targets_array.length == 0){
+          new_target = new Target(x, y, z, t, exposure_time, shape_index);
+          this.targets_array.push(new_target);
+        }
+        // If it's time to spawn a new object, spawn next object close to but not overlapping with last object
+        else if (Math.floor(t) - Math.floor(this.targets_array[this.targets_array.length - 1].time_created) >= spawn_freq){
+          let last_x = this.targets_array[this.targets_array.length - 1].x;
+          let last_y = this.targets_array[this.targets_array.length - 1].y;
+          x = x - last_x*0.5;
+          y = y - last_y*0.5;
+          new_target = new Target(x, y, z, t, exposure_time, shape_index);
+
+          // Have 20% chance of obstacle spawning given that obstacles are toggled on
+          if (obstacles){
+            let spawn_obstacle = Math.random() * 5;
+            if (Math.floor(spawn_obstacle) == 1){
+              new_target = new Target(x, y, z, t, exposure_time, shape_index, true);
+            }
+          }
+          this.targets_array.push(new_target);
+        }
       }
     }
+
     //display all shapes in array
     for (let i = 0; i < this.targets_array.length; i++) {
       let target_pos_transform = model_transform.times(
@@ -287,33 +307,34 @@ export class Target_Terminator extends Scene {
           this.targets_array[i].z
         )
       );
+      let material = this.targets_array[i].obstacle ? this.materials.obstacle : this.materials.base_target;
       if (this.targets_array[i].shape == "cube") {
         this.shapes.cube.draw(
           context,
           program_state,
           target_pos_transform,
-          this.materials.base_target
+          material
         );
       } else if (this.targets_array[i].shape == "sphere") {
         this.shapes.sphere.draw(
           context,
           program_state,
           target_pos_transform,
-          this.materials.base_target
+          material
         );
       } else if (this.targets_array[i].shape == "donut") {
         this.shapes.donut.draw(
           context,
           program_state,
           target_pos_transform,
-          this.materials.base_target
+          material
         );
       } else if (this.targets_array[i].shape == "teapot") {
         this.shapes.teapot.draw(
           context,
           program_state,
           target_pos_transform,
-          this.materials.base_target
+          material
         );
       }
     }
@@ -325,13 +346,21 @@ export class Target_Terminator extends Scene {
         this.targets_array.shift();
       }
     }
-
-    if (obstacles) {
-      // Spawn obstacles that block the user, low priority
-      console.log("Obstacles not implemented yet");
-    }
   }
 
+  target_hit_callback(i) {
+    this.targets_array.splice(i,1)
+    console.log("Target " + i + " hit!")
+  }
+
+  pointerLockChangeCallback(canvas) {
+    if (document.pointerLockElement === canvas){
+      console.log("enter")
+    } else {
+      console.log("exit")
+    }
+  }
+  
   display(context, program_state) {
     let lookAt = this.camera.lookAt;
     let canvas = context.canvas;
@@ -347,28 +376,20 @@ export class Target_Terminator extends Scene {
         );
 
       // Added pointer lock to the game. https://developer.mozilla.org/en-US/docs/Web/API/Pointer_Lock_API
-      canvas.addEventListener(
-        "mousedown",
-        async (e) => {
-          e.preventDefault();
-          if (!canvas.pointerLockedElement) {
-            await canvas.requestPointerLock();
+      canvas.addEventListener("mousedown", async (e) => {
+        e.preventDefault();
+        if (!document.pointerLockElement && this.game_state == 1){
+          await canvas.requestPointerLock();
+        }
+        canvas.addEventListener("mousemove", (e) => {
+          let del_x = e.movementX;
+          let del_y = e.movementY;
+          if (this.game_state == 1){
+            this.camera.update_view(del_x, del_y, this.options.sensitivity);
           }
-          canvas.addEventListener("mousemove", (e) => {
-            let del_x = e.movementX;
-            let del_y = e.movementY;
-            if (this.game_state == 1) {
-              lookAt = this.camera.update_view(
-                del_x,
-                del_y,
-                this.options.sensitivity
-              );
-            }
-          });
-          this.fire_teapot(e, mouse_position(e), context, program_state);
-        },
-        { once: true }
-      );
+        });
+        this.fire_ray(e, mouse_position(e), context, program_state);
+      }, {once: true});
     }
 
     program_state.projection_transform = Mat4.perspective(
@@ -399,18 +420,20 @@ export class Target_Terminator extends Scene {
           let position = to
             .times(animation_process)
             .plus(from.times(1 - animation_process));
-
-          let model_trans = Mat4.translation(
-            position[0],
-            position[1],
-            position[2]
-          ).times(Mat4.rotation(animation_process * 50, 0.3, 0.6, 0.2));
-          this.shapes.teapot.draw(
-            context,
-            program_state,
-            model_trans,
-            this.materials.texture
-          );
+          // Check intersection for targets
+          if (this.game_state == 1) {
+            for (let i = 0; i < this.targets_array.length; i++) {
+              // Calculate distance of cube to ray
+              let distanceX = Math.abs(this.targets_array[i].x - position[0]);
+              let distanceY = Math.abs(this.targets_array[i].y - position[1]);
+              let distanceZ = Math.abs(this.targets_array[i].z - position[2]);
+              if (distanceX < 2 && distanceY < 2 && distanceZ < 2) {
+                this.target_hit_callback(i)
+                // End ray cast
+                this.animation_queue.shift();
+              }
+            }
+          }
         }
       }
     }
@@ -430,11 +453,13 @@ export class Target_Terminator extends Scene {
       case 1:
         this.display_shapes(context, program_state, this.options, t);
         DisplayBackground(context, program_state, this.shapes, this.materials);
+        this.camera.draw_ui(context, program_state, this.shapes, this.materials, this.game_score, this.round_time);
         break;
       case 2:
         program_state.set_camera(this.camera.default);
-        if (this.pointer_locked) {
-          console.log("pointer unlocked");
+        if (document.pointerLockedElement === canvas){
+          console.log('pointer unlocked');
+          document.exitPointerLock();
         }
         DisplayGameEnd(
           context,

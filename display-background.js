@@ -15,7 +15,7 @@ export default function DisplayBackground (context, program_state, shapes, mater
   }
   let draw_sun = () => {
       let model_transform = Mat4.identity();
-      model_transform = model_transform.times(Mat4.translation(-20, 15, -30)).times(Mat4.scale(3, 3, 3));
+      model_transform = model_transform.times(Mat4.translation(10, 30, -30)).times(Mat4.scale(3, 3, 3));
       // The parameters of the Light are: position, color, size
       shapes.sphere.draw(context, program_state, model_transform, materials.sun);
   }
