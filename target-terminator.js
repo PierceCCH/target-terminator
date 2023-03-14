@@ -41,13 +41,16 @@ export class Target_Terminator extends Scene {
     const phong = new defs.Phong_Shader();
     const scarlet_color = hex_color("#D21404");
     const green = hex_color("#00FF00");
+    const gold = hex_color("#FFFF00");
 
     this.materials = {
       base_target: new Material(phong, { color: scarlet_color }),
+      teapot: new Material(phong, { color: gold }),
       obstacle: new Material(phong, { color: green }),
       phong: new Material(new Textured_Phong(), {
-        color: hex_color("#ffffff"),
-        ambient: 1
+        ambient: 1,
+        specularity: 1,
+        diffusivity: 1,
       }),
       texture: new Material(new Textured_Phong(), {
         color: hex_color("#ffffff"),
@@ -313,7 +316,7 @@ export class Target_Terminator extends Scene {
         this.shapes.cube.draw(
           context,
           program_state,
-          target_pos_transform,
+          target_pos_transform.times(Mat4.rotation(t*10, 0, 1, 0)),
           material
         );
       } else if (this.targets_array[i].shape == "sphere") {
@@ -327,14 +330,19 @@ export class Target_Terminator extends Scene {
         this.shapes.donut.draw(
           context,
           program_state,
-          target_pos_transform,
+          target_pos_transform.times(Mat4.rotation(Math.sin(Math.PI * t), Math.random(), 0, 0)),
           material
         );
       } else if (this.targets_array[i].shape == "teapot") {
+        if (!this.targets_array[i].obstacle){
+          material = this.materials.teapot;
+        }
         this.shapes.teapot.draw(
           context,
           program_state,
-          target_pos_transform,
+          target_pos_transform.times(Mat4.scale(0.4, 0.4, 0.4))
+                              .times(Mat4.rotation(Math.PI / 2, -1, 0, 0))
+                              .times(Mat4.rotation(Math.sin(2 * Math.PI * t), 0, Math.random(), 0)),
           material
         );
       }
@@ -354,7 +362,24 @@ export class Target_Terminator extends Scene {
     if (target.obstacle){
       this.game_score -= 10;
     } else {
-      this.game_score += 10;
+      let  type = target.shape;
+      switch (type) {
+        case "cube":
+          this.game_score += 10;
+          break;
+        case "sphere":
+          this.game_score += 20;
+          break;
+        case "donut":
+          this.game_score += 30;
+          break;
+        case "teapot":
+          this.game_score += 50;
+          break;
+        default:
+          this.game_score += 0;
+          break;
+      }
     }
     this.targets_array.splice(i,1)
     console.log("Target " + i + " hit!")
