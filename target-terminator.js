@@ -385,13 +385,19 @@ export class Target_Terminator extends Scene {
     console.log("Target " + i + " hit!")
   }
 
+  // Initialise game variables to initial state
+  initialise_game() {
+    this.game_score = 0;
+    this.time_counter = 1;
+    this.time_start = 0;
+    this.round_time = 60;
+    this.first_render = true;
+  } 
+
   timer_countdown() {
     this.round_time--;
     if (this.round_time == 0) {
       this.game_state = 2;
-      this.time_counter = 1;
-      this.first_render = true;
-      this.time_start = 0;
     }
   }
 
@@ -484,6 +490,7 @@ export class Target_Terminator extends Scene {
     // game state case
     switch (this.game_state) {
       case 0:
+        this.initialise_game();
         program_state.set_camera(this.camera.default);
         DisplayMenu(
           context,
@@ -520,7 +527,6 @@ export class Target_Terminator extends Scene {
           this.materials,
           this.game_score
         );
-        this.round_time = 60;
         break;
       default:
         break;
