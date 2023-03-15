@@ -520,6 +520,7 @@ export class Target_Terminator extends Scene {
           this.materials,
           this.game_score
         );
+        this.round_time = 60;
         break;
       default:
         break;
