@@ -16,8 +16,11 @@ export class Target_Terminator extends Scene {
   constructor() {
     super();
     this.game_state = 0; // 0 = start, 1 = playing, 2 = end
-    this.round_time = 999; // Timer for each round
-    this.game_score = 10000000000000;
+    this.game_score = 0;
+    this.round_time = 60; // Timer for each round
+    this.time_start = 0;
+    this.first_render = true;
+    this.time_counter = 1;
 
     this.targets_array = []; // Array of targets
     this.shapes = {
@@ -38,13 +41,16 @@ export class Target_Terminator extends Scene {
     const phong = new defs.Phong_Shader();
     const scarlet_color = hex_color("#D21404");
     const green = hex_color("#00FF00");
+    const gold = hex_color("#FFFF00");
 
     this.materials = {
       base_target: new Material(phong, { color: scarlet_color }),
+      teapot: new Material(phong, { color: gold }),
       obstacle: new Material(phong, { color: green }),
       phong: new Material(new Textured_Phong(), {
-        color: hex_color("#ffffff"),
-        ambient: 1
+        ambient: 1,
+        specularity: 1,
+        diffusivity: 1,
       }),
       texture: new Material(new Textured_Phong(), {
         color: hex_color("#ffffff"),
@@ -79,6 +85,7 @@ export class Target_Terminator extends Scene {
       timer_text: new Material(texture, {
         ambient: 0.5,
         texture: new Texture("assets/text.png"),
+        color: hex_color("#FF0000"),
       }),
       header_text_image: new Material(texture, {
         color: hex_color("#424949"),
@@ -121,9 +128,8 @@ export class Target_Terminator extends Scene {
         specularity: 0,
       }),
     };
-    this.camera = new FirstPersonCamera(0, 0, 10);
-    this.mouse_position;
 
+    this.camera = new FirstPersonCamera(0, 0, 10);
     this.options = {
       toggleShapes: {
         cube: false,
@@ -136,8 +142,6 @@ export class Target_Terminator extends Scene {
       sensitivity: 1,
     };
     this.animation_queue = [];
-    this.spawned_entities = {}; // store all shapes in scene
-    this.score = 999;
   }
 
   // TEMPORARY: Control Panel to change shapes, speed, etc.
@@ -193,7 +197,7 @@ export class Target_Terminator extends Scene {
     });
   }
 
-  fire_ray(e, pos, context, program_state) {
+  fire_ray(pos, program_state) {
     let pos_ndc_near = vec4(pos[0], pos[1], -1.0, 1.0);
     let pos_ndc_far = vec4(pos[0], pos[1], 1.0, 1.0);
     let center_ndc_near = vec4(0.0, 0.0, -1.0, 1.0);
@@ -312,7 +316,7 @@ export class Target_Terminator extends Scene {
         this.shapes.cube.draw(
           context,
           program_state,
-          target_pos_transform,
+          target_pos_transform.times(Mat4.rotation(t*10, 0, 1, 0)),
           material
         );
       } else if (this.targets_array[i].shape == "sphere") {
@@ -326,14 +330,19 @@ export class Target_Terminator extends Scene {
         this.shapes.donut.draw(
           context,
           program_state,
-          target_pos_transform,
+          target_pos_transform.times(Mat4.rotation(Math.sin(Math.PI * t), Math.random(), 0, 0)),
           material
         );
       } else if (this.targets_array[i].shape == "teapot") {
+        if (!this.targets_array[i].obstacle){
+          material = this.materials.teapot;
+        }
         this.shapes.teapot.draw(
           context,
           program_state,
-          target_pos_transform,
+          target_pos_transform.times(Mat4.scale(0.4, 0.4, 0.4))
+                              .times(Mat4.rotation(Math.PI / 2, -1, 0, 0))
+                              .times(Mat4.rotation(Math.sin(2 * Math.PI * t), 0, Math.random(), 0)),
           material
         );
       }
@@ -349,8 +358,47 @@ export class Target_Terminator extends Scene {
   }
 
   target_hit_callback(i) {
+    let target = this.targets_array[i];
+    if (target.obstacle){
+      this.game_score -= 10;
+    } else {
+      let  type = target.shape;
+      switch (type) {
+        case "cube":
+          this.game_score += 10;
+          break;
+        case "sphere":
+          this.game_score += 20;
+          break;
+        case "donut":
+          this.game_score += 30;
+          break;
+        case "teapot":
+          this.game_score += 50;
+          break;
+        default:
+          this.game_score += 0;
+          break;
+      }
+    }
     this.targets_array.splice(i,1)
     console.log("Target " + i + " hit!")
+  }
+
+  // Initialise game variables to initial state
+  initialise_game() {
+    this.game_score = 0;
+    this.time_counter = 1;
+    this.time_start = 0;
+    this.round_time = 60;
+    this.first_render = true;
+  } 
+
+  timer_countdown() {
+    this.round_time--;
+    if (this.round_time == 0) {
+      this.game_state = 2;
+    }
   }
 
   pointerLockChangeCallback(canvas) {
@@ -365,7 +413,7 @@ export class Target_Terminator extends Scene {
     let lookAt = this.camera.lookAt;
     let canvas = context.canvas;
     program_state.set_camera(lookAt);
-
+    
     if (!context.scratchpad.controls) {
       const mouse_position = (e, rect = canvas.getBoundingClientRect()) =>
         vec(
@@ -388,7 +436,7 @@ export class Target_Terminator extends Scene {
             this.camera.update_view(del_x, del_y, this.options.sensitivity);
           }
         });
-        this.fire_ray(e, mouse_position(e), context, program_state);
+        this.fire_ray(mouse_position(e), program_state);
       }, {once: true});
     }
 
@@ -406,6 +454,7 @@ export class Target_Terminator extends Scene {
     ];
 
     let t = program_state.animation_time;
+
     if (this.animation_queue.length > 0) {
       for (let i = 0; i < this.animation_queue.length; i++) {
         let animation_bullet = this.animation_queue[i];
@@ -441,6 +490,7 @@ export class Target_Terminator extends Scene {
     // game state case
     switch (this.game_state) {
       case 0:
+        this.initialise_game();
         program_state.set_camera(this.camera.default);
         DisplayMenu(
           context,
@@ -452,6 +502,15 @@ export class Target_Terminator extends Scene {
         break;
       case 1:
         this.display_shapes(context, program_state, this.options, t);
+        if (this.first_render){
+          this.first_render = false;
+          this.time_start = Date.now();
+        }
+        let current_time = Date.now();
+        if (Math.floor((current_time - this.time_start) / 1000) == this.time_counter) {
+          this.timer_countdown();
+          this.time_counter++;
+        }
         DisplayBackground(context, program_state, this.shapes, this.materials);
         this.camera.draw_ui(context, program_state, this.shapes, this.materials, this.game_score, this.round_time);
         break;
@@ -466,7 +525,7 @@ export class Target_Terminator extends Scene {
           program_state,
           this.shapes,
           this.materials,
-          this.score
+          this.game_score
         );
         break;
       default:
