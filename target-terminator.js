@@ -472,6 +472,68 @@ export class Target_Terminator extends Scene {
           let position = to
             .times(animation_process)
             .plus(from.times(1 - animation_process));
+          // Check intersection for menu elements
+          console.log(position)
+          if (this.game_state == 0) {
+            
+            let play_button_position = [-3,-0.25];
+            if (
+              Math.abs(position[0] - play_button_position[0]) < 2 &&
+              Math.abs(position[1] - play_button_position[1]) < 0.15
+            ) {
+              this.game_state = 1;
+              this.animation_queue.length = 0;
+            }
+            
+            let difficulty_button_position = [-4,-3.5];
+            if (
+              Math.abs(position[0] - difficulty_button_position[0]) < 2 &&
+              Math.abs(position[1] - difficulty_button_position[1]) < 0.15
+            ) {
+              this.options.difficulty += 1;
+              if (this.options.difficulty > 3) {
+                this.options.difficulty = 1;
+              }
+              this.animation_queue.length = 0;
+            }
+
+            // Check for options
+            if (0.15 < position[0] && position[0] < 0.398) {
+              if (0.21 < position[1] && position[1] < 0.279) {
+                this.options.toggleShapes.cube = !this.options.toggleShapes.cube;
+                this.animation_queue.length = 0;
+              }
+  
+              if (0.123 < position[1] && position[1] < 0.19) {
+                this.options.toggleShapes.sphere = !this.options.toggleShapes.sphere;
+                this.animation_queue.length = 0;
+              }
+
+              if (0.034 < position[1] && position[1] < 0.106) {
+                this.options.toggleShapes.donut = !this.options.toggleShapes.donut;
+                this.animation_queue.length = 0;
+              }
+
+              if (-0.051 < position[1] && position[1] < 0.021) {
+                this.options.toggleShapes.teapot = !this.options.toggleShapes.teapot;
+                this.animation_queue.length = 0;
+              }
+
+              if (-0.135 < position[1] && position[1] < -0.065) {
+                this.options.sensitivity += 1;
+                if (this.options.sensitivity > 5) {
+                  this.options.sensitivity = 1;
+                }
+                this.animation_queue.length = 0;
+              }
+
+              if (-0.223 < position[1] && position[1] < -0.145) {
+                this.options.obstacles = !this.options.obstacles;
+                this.animation_queue.length = 0;
+              }
+            }
+            
+          }
           // Check intersection for targets
           if (this.game_state == 1) {
             for (let i = 0; i < this.targets_array.length; i++) {
@@ -482,7 +544,7 @@ export class Target_Terminator extends Scene {
               if (distanceX < 2 && distanceY < 2 && distanceZ < 2) {
                 this.target_hit_callback(i)
                 // End ray cast
-                this.animation_queue.shift();
+                this.animation_queue.length = 0;
               }
             }
           }
@@ -549,7 +611,7 @@ export class Target_Terminator extends Scene {
     // remove finished animation
     while (this.animation_queue.length > 0) {
       if (t > this.animation_queue[0].end_time) {
-        this.animation_queue.shift();
+        this.animation_queue.length = 0;
       } else {
         break;
       }
