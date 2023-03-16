@@ -476,7 +476,7 @@ export class Target_Terminator extends Scene {
             .times(animation_process)
             .plus(from.times(1 - animation_process));
           // Check intersection for menu elements
-          console.log(position)
+          // console.log(position)
           if (this.game_state == 0) {
             
             let play_button_position = [-3,-0.25];
@@ -501,28 +501,28 @@ export class Target_Terminator extends Scene {
             }
 
             // Check for options
-            if (0.15 < position[0] && position[0] < 0.398) {
-              if (0.21 < position[1] && position[1] < 0.279) {
+            if (3.15 < position[0] && position[0] < 4.85) {
+              if (3.25 < position[1] && position[1] < 3.75) {
                 this.options.toggleShapes.cube = !this.options.toggleShapes.cube;
                 this.animation_queue.length = 0;
               }
   
-              if (0.123 < position[1] && position[1] < 0.19) {
+              if (2 < position[1] && position[1] < 2.5) {
                 this.options.toggleShapes.sphere = !this.options.toggleShapes.sphere;
                 this.animation_queue.length = 0;
               }
 
-              if (0.034 < position[1] && position[1] < 0.106) {
+              if (0.75 < position[1] && position[1] < 1.25) {
                 this.options.toggleShapes.donut = !this.options.toggleShapes.donut;
                 this.animation_queue.length = 0;
               }
 
-              if (-0.051 < position[1] && position[1] < 0.021) {
+              if (-0.5 < position[1] && position[1] < 0) {
                 this.options.toggleShapes.teapot = !this.options.toggleShapes.teapot;
                 this.animation_queue.length = 0;
               }
 
-              if (-0.135 < position[1] && position[1] < -0.065) {
+              if (-1.75 < position[1] && position[1] < -1.25) {
                 this.options.sensitivity += 1;
                 if (this.options.sensitivity > 5) {
                   this.options.sensitivity = 1;
@@ -530,7 +530,7 @@ export class Target_Terminator extends Scene {
                 this.animation_queue.length = 0;
               }
 
-              if (-0.223 < position[1] && position[1] < -0.145) {
+              if (-3 < position[1] && position[1] < -2.5) {
                 this.options.obstacles = !this.options.obstacles;
                 this.animation_queue.length = 0;
               }
