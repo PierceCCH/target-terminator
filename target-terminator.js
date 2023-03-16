@@ -198,6 +198,9 @@ export class Target_Terminator extends Scene {
   }
 
   fire_ray(pos, program_state) {
+    if (this.game_state == 1) {
+      pos = [0,0]
+    }
     let pos_ndc_near = vec4(pos[0], pos[1], -1.0, 1.0);
     let pos_ndc_far = vec4(pos[0], pos[1], 1.0, 1.0);
     let center_ndc_near = vec4(0.0, 0.0, -1.0, 1.0);
@@ -483,6 +486,17 @@ export class Target_Terminator extends Scene {
               }
             }
           }
+          // let model_trans = Mat4.translation(
+          //   position[0],
+          //   position[1],
+          //   position[2]
+          // ).times(Mat4.rotation(animation_process * 50, 0.3, 0.6, 0.2));
+          // this.shapes.teapot.draw(
+          //   context,
+          //   program_state,
+          //   model_trans,
+          //   this.materials.texture
+          // );
         }
       }
     }
