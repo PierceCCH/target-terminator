@@ -541,7 +541,7 @@ export class Target_Terminator extends Scene {
               let distanceX = Math.abs(this.targets_array[i].x - position[0]);
               let distanceY = Math.abs(this.targets_array[i].y - position[1]);
               let distanceZ = Math.abs(this.targets_array[i].z - position[2]);
-              if (distanceX < 2 && distanceY < 2 && distanceZ < 2) {
+              if (distanceX < 1.414 && distanceY < 1.414 && distanceZ < 1.414) {
                 this.target_hit_callback(i)
                 // End ray cast
                 this.animation_queue.length = 0;
