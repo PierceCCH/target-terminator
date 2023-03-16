@@ -199,7 +199,10 @@ export class Target_Terminator extends Scene {
 
   fire_ray(pos, program_state) {
     if (this.game_state == 1) {
-      pos = [0,0]
+      pos = [0,0];
+    }
+    if (this.game_state == 2) {
+      this.game_state = 0;
     }
     let pos_ndc_near = vec4(pos[0], pos[1], -1.0, 1.0);
     let pos_ndc_far = vec4(pos[0], pos[1], 1.0, 1.0);
