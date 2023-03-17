@@ -128,7 +128,7 @@ const Controls_Widget = widgets.Controls_Widget =
             this.panels = [];
             this.scenes = scenes;
 
-            this.render();
+            // this.render();
         }
 
         make_panels(time) {
