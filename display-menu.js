@@ -231,7 +231,7 @@ export default function DisplayMenu(
       obstacles_button_transform,
       materials.menu_button
     );
-    string = "Obstacles: " + (obstacles ? "on" : "off");
+    string = "Obstacles: " + (obstacles ? "On" : "Off");
     shapes.text.set_string(string, context.context);
     shapes.text.draw(
       context,

@@ -11,7 +11,6 @@ const { vec, vec4, color, hex_color, Mat4, Light, Material, Scene, Texture } = t
 
 const { Textured_Phong, Basic_Shader } = defs;
 
-
 export class Target_Terminator extends Scene {
   constructor() {
     super();
@@ -142,59 +141,6 @@ export class Target_Terminator extends Scene {
       sensitivity: 1,
     };
     this.animation_queue = [];
-  }
-
-  // TEMPORARY: Control Panel to change shapes, speed, etc.
-  make_control_panel() {
-    this.key_triggered_button("Toggle cube", ["c"], () => {
-      this.options.toggleShapes.cube = !this.options.toggleShapes.cube;
-    });
-    this.new_line();
-    this.key_triggered_button("Toggle sphere", ["s"], () => {
-      this.options.toggleShapes.sphere = !this.options.toggleShapes.sphere;
-    });
-    this.new_line();
-    this.key_triggered_button("Toggle donut", ["d"], () => {
-      this.options.toggleShapes.donut = !this.options.toggleShapes.donut;
-    });
-    this.new_line();
-    this.key_triggered_button("Toggle teapot", ["t"], () => {
-      this.options.toggleShapes.teapot = !this.options.toggleShapes.teapot;
-    });
-    this.new_line();
-    this.key_triggered_button("Toggle obstacles", ["o"], () => {
-      this.options.obstacles = !this.options.obstacles;
-    });
-    this.new_line();
-    this.key_triggered_button("Cycle Difficulty", ["Control", "d"], () => {
-      this.options.difficulty += 1;
-      if (this.options.difficulty > 3) {
-        this.options.difficulty = 1;
-      }
-    });
-    this.live_string((box) => {
-      box.textContent = "Difficulty: " + this.options.difficulty;
-    });
-
-    this.key_triggered_button("Cycle game state", ["Control", "g"], () => {
-      this.game_state += 1;
-      if (this.game_state > 2) {
-        this.game_state = 0;
-      }
-    });
-    this.live_string((box) => {
-      box.textContent = "Game State: " + this.game_state;
-    });
-
-    this.key_triggered_button("Cycle Sensitivity", ["Control", "s"], () => {
-      this.options.sensitivity += 1;
-      if (this.options.sensitivity > 5) {
-        this.options.sensitivity = 1;
-      }
-    });
-    this.live_string((box) => {
-      box.textContent = "Sensitivity: " + this.options.sensitivity;
-    });
   }
 
   fire_ray(pos, program_state) {
@@ -388,7 +334,6 @@ export class Target_Terminator extends Scene {
       }
     }
     this.targets_array.splice(i,1)
-    console.log("Target " + i + " hit!")
   }
 
   // Initialise game variables to initial state
@@ -404,14 +349,6 @@ export class Target_Terminator extends Scene {
     this.round_time--;
     if (this.round_time == 0) {
       this.game_state = 2;
-    }
-  }
-
-  pointerLockChangeCallback(canvas) {
-    if (document.pointerLockElement === canvas){
-      console.log("enter")
-    } else {
-      console.log("exit")
     }
   }
   
@@ -476,7 +413,6 @@ export class Target_Terminator extends Scene {
             .times(animation_process)
             .plus(from.times(1 - animation_process));
           // Check intersection for menu elements
-          // console.log(position)
           if (this.game_state == 0) {
             
             let play_button_position = [-3,-0.25];
@@ -578,17 +514,6 @@ export class Target_Terminator extends Scene {
               }
             }
           }
-          // let model_trans = Mat4.translation(
-          //   position[0],
-          //   position[1],
-          //   position[2]
-          // ).times(Mat4.rotation(animation_process * 50, 0.3, 0.6, 0.2));
-          // this.shapes.teapot.draw(
-          //   context,
-          //   program_state,
-          //   model_trans,
-          //   this.materials.texture
-          // );
         }
       }
     }
@@ -623,7 +548,6 @@ export class Target_Terminator extends Scene {
       case 2:
         program_state.set_camera(this.camera.default);
         if (document.pointerLockedElement === canvas){
-          console.log('pointer unlocked');
           document.exitPointerLock();
         }
         DisplayGameEnd(
