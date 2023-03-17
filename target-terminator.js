@@ -44,9 +44,9 @@ export class Target_Terminator extends Scene {
     const gold = hex_color("#FFFF00");
 
     this.materials = {
-      base_target: new Material(phong, { color: scarlet_color }),
-      teapot: new Material(phong, { color: gold }),
-      obstacle: new Material(phong, { color: green }),
+      base_target: new Material(phong, { color: scarlet_color, ambient: 1 }),
+      teapot: new Material(phong, { color: gold, ambient: 1 }),
+      obstacle: new Material(phong, { color: green, ambient: 1}),
       phong: new Material(new Textured_Phong(), {
         ambient: 1,
         specularity: 1,
